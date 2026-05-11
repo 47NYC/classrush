@@ -486,6 +486,11 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
           <div className="p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6">
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">{question.text}</h2>
           </div>
+          {players.find((p) => p.user_id === userId)?.is_eliminated && (
+            <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-2xl text-center font-display font-bold">
+              💀 Tu es éliminé — observe les autres jusqu'à la fin de la partie.
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-3">
             {question.answers.map((a, i) => {
