@@ -42,7 +42,7 @@ type PlayerRow = {
 type ProfileLite = { id: string; username: string; display_name: string | null };
 
 type AnswerRow = { id: string; position: number; text: string; is_correct: boolean };
-type QuestionRow = { id: string; position: number; text: string; time_limit: number; points: number; answers: AnswerRow[] };
+type QuestionRow = { id: string; position: number; text: string; image_url: string | null; time_limit: number; points: number; answers: AnswerRow[] };
 type QuizRow = { id: string; title: string; cover_url: string | null; questions: QuestionRow[] };
 
 function RoomPage() {
@@ -299,7 +299,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quizzes")
-        .select("id, title, cover_url, questions(id, position, text, time_limit, points, answers(id, position, text, is_correct))")
+        .select("id, title, cover_url, questions(id, position, text, image_url, time_limit, points, answers(id, position, text, is_correct))")
         .eq("id", room.quiz_id)
         .single();
       if (error) throw error;
@@ -485,6 +485,13 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
         <section>
           <div className="p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6">
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">{question.text}</h2>
+            {question.image_url && (
+              <img
+                src={question.image_url}
+                alt=""
+                className="mt-5 mx-auto rounded-2xl max-h-64 object-contain"
+              />
+            )}
           </div>
           {players.find((p) => p.user_id === userId)?.is_eliminated && (
             <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-2xl text-center font-display font-bold">
