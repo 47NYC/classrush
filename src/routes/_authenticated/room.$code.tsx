@@ -573,12 +573,13 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
                 return (
                   <div key={p.id} className={`flex items-center gap-2.5 p-2 rounded-xl text-sm transition-all ${
                     isMe ? "bg-primary/10 border border-primary/20" : ""
-                  }`}>
+                  } ${p.is_eliminated ? "opacity-50" : ""}`}>
                     <span className="w-5 text-xs font-bold text-muted-foreground tabular-nums">{idx + 1}</span>
                     <div className="size-7 rounded-full bg-primary/15 text-primary grid place-items-center font-bold text-xs">
                       {name[0].toUpperCase()}
                     </div>
                     <span className="font-semibold flex-1 truncate">{name}</span>
+                    {p.is_eliminated && <span className="text-xs">💀</span>}
                     <span className="text-xs font-bold tabular-nums">{p.score}</span>
                   </div>
                 );
