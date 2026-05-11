@@ -22,8 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { profile, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { profile } = useAuth();
 
   const { data: popularQuizzes } = useQuery({
     queryKey: ["popular-quizzes"],
@@ -38,10 +37,6 @@ function Dashboard() {
       return data ?? [];
     },
   });
-
-  // signOut moved to AppSidebar
-  void signOut;
-  void navigate;
 
   const initial = (profile?.display_name || profile?.username || "?")[0].toUpperCase();
   const displayName = profile?.display_name || profile?.username || "Joueur";
