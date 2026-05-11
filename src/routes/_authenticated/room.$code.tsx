@@ -229,7 +229,10 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
             </button>
             <div className="mt-6 pt-6 border-t border-primary-foreground/20">
               <p className="text-sm opacity-90 mb-1">{quizMeta?.title ?? "Quiz"}</p>
-              <p className="text-xs opacity-70">{quizMeta?.description ?? "Mode Classic Quiz"}</p>
+              <p className="text-xs opacity-70 mb-3">{quizMeta?.description ?? "Quiz"}</p>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-foreground/15 text-xs font-bold uppercase tracking-wider">
+                Mode {room.mode}
+              </span>
             </div>
           </div>
         </section>
@@ -460,8 +463,11 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
       <header className="border-b border-border/60 bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <Logo />
-          <div className="text-xs text-muted-foreground tabular-nums">
-            Question {room.current_question + 1} / {totalQuestions}
+          <div className="flex items-center gap-3">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider">{room.mode}</span>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              Question {room.current_question + 1} / {totalQuestions}
+            </div>
           </div>
           <div className="flex items-center gap-2 px-3 h-9 rounded-full bg-warning/10 text-warning font-bold text-sm tabular-nums">
             <Clock className="size-4" /> {Math.ceil(timeLeft)}s
