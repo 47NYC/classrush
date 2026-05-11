@@ -1,7 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
-import { Mail, Lock, ArrowRight, Sparkles } from "lucide-react";
+import { Mail, Lock, ArrowRight, Sparkles, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -15,6 +18,51 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { username } },
+        });
+        if (error) throw error;
+        toast.success("Compte créé ! Bienvenue.");
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success("Connecté !");
+      }
+      navigate({ to: "/dashboard" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur de connexion");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/dashboard",
+    });
+    if (result.error) {
+      toast.error("Connexion Google impossible");
+      setLoading(false);
+      return;
+    }
+    if (result.redirected) return;
+    navigate({ to: "/dashboard" });
+  };
+
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-background">
@@ -35,16 +83,9 @@ function AuthPage() {
           <h2 className="font-display text-4xl xl:text-5xl font-bold leading-tight text-balance">
             "Apprendre devient un moment qu'on attend avec impatience."
           </h2>
-          <div className="flex items-center gap-3 text-sm">
-            <div className="flex -space-x-2">
-              {["bg-warning", "bg-success", "bg-destructive", "bg-primary-foreground/30"].map((c, i) => (
-                <div key={i} className={`size-9 rounded-full border-2 border-primary ${c}`} />
-              ))}
-            </div>
-            <span className="text-primary-foreground/85">
-              Rejoignez +50 000 élèves & enseignants
-            </span>
-          </div>
+          <p className="text-primary-foreground/85 text-sm leading-relaxed">
+            Créez votre compte gratuit, rejoignez vos amis avec un code à 6 chiffres et lancez votre première partie en quelques secondes.
+          </p>
         </div>
 
         <div className="relative text-xs text-primary-foreground/70">
@@ -81,10 +122,14 @@ function AuthPage() {
 
             <div className="space-y-3 mb-6">
               <button className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-2xl font-semibold text-sm hover:border-primary btn-press">
+            <div className="space-y-3 mb-6">
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={loading}
+                className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-2xl font-semibold text-sm hover:border-primary btn-press disabled:opacity-50"
+              >
                 <GoogleIcon /> Continuer avec Google
-              </button>
-              <button className="w-full h-12 flex items-center justify-center gap-3 bg-foreground text-background rounded-2xl font-semibold text-sm btn-press">
-                <AppleIcon /> Continuer avec Apple
               </button>
             </div>
 
@@ -94,12 +139,16 @@ function AuthPage() {
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-4" onSubmit={handleEmail}>
               {mode === "signup" && (
                 <Field label="Pseudo">
                   <input
                     type="text"
-                    placeholder="Lucas_99"
+                    required
+                    minLength={3}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="lucas_99"
                     className="w-full bg-transparent outline-none text-sm"
                   />
                 </Field>
@@ -107,6 +156,9 @@ function AuthPage() {
               <Field label="Email" icon={<Mail className="size-4" />}>
                 <input
                   type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="vous@email.com"
                   className="w-full bg-transparent outline-none text-sm"
                 />
@@ -114,26 +166,27 @@ function AuthPage() {
               <Field label="Mot de passe" icon={<Lock className="size-4" />}>
                 <input
                   type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full bg-transparent outline-none text-sm"
                 />
               </Field>
 
-              {mode === "signin" && (
-                <div className="flex justify-end -mt-2">
-                  <a href="#" className="text-xs text-primary hover:underline font-medium">
-                    Mot de passe oublié ?
-                  </a>
-                </div>
-              )}
-
-              <Link
-                to="/dashboard"
-                className="w-full h-12 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press mt-2"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press mt-2 disabled:opacity-60"
               >
-                {mode === "signin" ? "Se connecter" : "Créer mon compte"}
-                <ArrowRight className="size-4" />
-              </Link>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : (
+                  <>
+                    {mode === "signin" ? "Se connecter" : "Créer mon compte"}
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </button>
             </form>
 
             <p className="mt-8 text-sm text-center text-muted-foreground">
