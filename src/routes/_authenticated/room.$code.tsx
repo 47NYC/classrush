@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
-  X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award,
+  X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
@@ -42,7 +42,7 @@ type PlayerRow = {
 type ProfileLite = { id: string; username: string; display_name: string | null };
 
 type AnswerRow = { id: string; position: number; text: string; is_correct: boolean };
-type QuestionRow = { id: string; position: number; text: string; time_limit: number; points: number; answers: AnswerRow[] };
+type QuestionRow = { id: string; position: number; text: string; image_url: string | null; time_limit: number; points: number; answers: AnswerRow[] };
 type QuizRow = { id: string; title: string; cover_url: string | null; questions: QuestionRow[] };
 
 function RoomPage() {
@@ -206,6 +206,7 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
   };
 
   const copy = () => { navigator.clipboard.writeText(room.code); toast.success("Code copié !"); };
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -229,7 +230,10 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
             </button>
             <div className="mt-6 pt-6 border-t border-primary-foreground/20">
               <p className="text-sm opacity-90 mb-1">{quizMeta?.title ?? "Quiz"}</p>
-              <p className="text-xs opacity-70">{quizMeta?.description ?? "Mode Classic Quiz"}</p>
+              <p className="text-xs opacity-70 mb-3">{quizMeta?.description ?? "Quiz"}</p>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary-foreground/15 text-xs font-bold uppercase tracking-wider">
+                Mode {room.mode}
+              </span>
             </div>
           </div>
         </section>
@@ -279,7 +283,93 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
               En attente du lancement par l'hôte…
             </div>
           )}
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="mt-3 w-full h-11 inline-flex items-center justify-center gap-2 bg-card border border-border rounded-2xl text-sm font-semibold btn-press hover:border-primary"
+          >
+            <UserPlus className="size-4" /> Inviter des amis
+          </button>
         </section>
+      </div>
+      {inviteOpen && (
+        <InviteFriendsModal
+          roomId={room.id}
+          roomCode={room.code}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function InviteFriendsModal({ roomId, roomCode, onClose }: { roomId: string; roomCode: string; onClose: () => void }) {
+  const { user } = useAuth();
+  const [friends, setFriends] = useState<{ id: string; name: string }[]>([]);
+  const [sent, setSent] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("friendships")
+        .select("requester_id, addressee_id, status")
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq("status", "accepted");
+      const ids = (rows ?? []).map((f) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
+      if (!ids.length) { setLoading(false); return; }
+      const { data: profs } = await supabase
+        .from("profiles").select("id, username, display_name").in("id", ids);
+      setFriends((profs ?? []).map((p) => ({ id: p.id, name: p.display_name || p.username })));
+      setLoading(false);
+    })();
+  }, [user]);
+
+  const invite = async (friendId: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("room_invites").insert({
+      room_id: roomId, room_code: roomCode, from_user: user.id, to_user: friendId, status: "pending",
+    });
+    if (error) { toast.error(error.message); return; }
+    setSent((s) => new Set(s).add(friendId));
+    toast.success("Invitation envoyée");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-md shadow-card" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-bold text-lg">Inviter des amis</h3>
+          <button onClick={onClose} className="size-8 grid place-items-center rounded-lg hover:bg-muted">
+            <XIcon className="size-4" />
+          </button>
+        </div>
+        {loading ? (
+          <div className="grid place-items-center py-8"><Loader2 className="size-5 animate-spin text-primary" /></div>
+        ) : friends.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Aucun ami pour le moment. Ajoute-en depuis la page Amis.</p>
+        ) : (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {friends.map((f) => {
+              const isSent = sent.has(f.id);
+              return (
+                <div key={f.id} className="flex items-center gap-3 p-2.5 bg-background border border-border rounded-xl">
+                  <div className="size-9 rounded-full bg-primary/15 text-primary grid place-items-center font-bold text-sm">
+                    {f.name[0]?.toUpperCase()}
+                  </div>
+                  <span className="font-semibold flex-1 truncate text-sm">{f.name}</span>
+                  <button
+                    onClick={() => invite(f.id)}
+                    disabled={isSent}
+                    className="inline-flex items-center gap-1 h-8 px-3 bg-primary text-primary-foreground text-xs font-semibold rounded-lg btn-press disabled:opacity-50"
+                  >
+                    {isSent ? <><Check className="size-3" /> Envoyé</> : <><Send className="size-3" /> Inviter</>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -296,7 +386,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("quizzes")
-        .select("id, title, cover_url, questions(id, position, text, time_limit, points, answers(id, position, text, is_correct))")
+        .select("id, title, cover_url, questions(id, position, text, image_url, time_limit, points, answers(id, position, text, is_correct))")
         .eq("id", room.quiz_id)
         .single();
       if (error) throw error;
@@ -359,10 +449,22 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 
   const handlePick = async (answer: AnswerRow) => {
     if (!question || hasAnswered || timeLeft <= 0) return;
+    // Eliminated players (Survival) cannot answer
+    const meRow = players.find((p) => p.user_id === userId);
+    if (meRow?.is_eliminated) return;
     setHasAnswered(true);
     setSelectedAnswer(answer.id);
-    // Score: full points if correct, weighted slightly by speed (50%-100%)
-    const speedFactor = 0.5 + 0.5 * (timeLeft / timeLimit);
+    // Speed factor depends on mode
+    const speedRatio = timeLeft / timeLimit;
+    let speedFactor: number;
+    if (room.mode === "speedrun") {
+      // Stronger speed weighting (25%-100% bonus over base)
+      speedFactor = 0.25 + 1.5 * speedRatio;
+    } else if (room.mode === "survival") {
+      speedFactor = 0.5 + 0.5 * speedRatio;
+    } else {
+      speedFactor = 0.5 + 0.5 * speedRatio;
+    }
     const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
     setShowFeedback({ correct: answer.is_correct, points: earned });
 
@@ -384,6 +486,10 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
       const newScore = (me?.score ?? 0) + earned;
       await supabase.from("room_players").update({ score: newScore }).eq("room_id", room.id).eq("user_id", userId);
     }
+    // Survival mode: wrong answer eliminates the player
+    if (room.mode === "survival" && !answer.is_correct) {
+      await supabase.from("room_players").update({ is_eliminated: true }).eq("room_id", room.id).eq("user_id", userId);
+    }
   };
 
   // Live answer count for this question
@@ -401,7 +507,8 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     },
   });
 
-  const everyoneAnswered = (answerCount ?? 0) >= players.length && players.length > 0;
+  const activePlayers = players.filter((p) => !p.is_eliminated);
+  const everyoneAnswered = (answerCount ?? 0) >= activePlayers.length && activePlayers.length > 0;
 
   // HOST auto-advance: when timer expires OR everyone answered
   useEffect(() => {
@@ -412,7 +519,9 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     advanceLockRef.current = room.current_question;
     const t = setTimeout(async () => {
       const next = room.current_question + 1;
-      if (next >= totalQuestions) {
+      // Survival: if everyone is eliminated, end the game
+      const allDead = room.mode === "survival" && activePlayers.length === 0;
+      if (next >= totalQuestions || allDead) {
         await supabase.from("rooms").update({ status: "finished", finished_at: new Date().toISOString() }).eq("id", room.id);
       } else {
         await supabase.from("rooms").update({
@@ -441,8 +550,11 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
       <header className="border-b border-border/60 bg-card sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
           <Logo />
-          <div className="text-xs text-muted-foreground tabular-nums">
-            Question {room.current_question + 1} / {totalQuestions}
+          <div className="flex items-center gap-3">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wider">{room.mode}</span>
+            <div className="text-xs text-muted-foreground tabular-nums">
+              Question {room.current_question + 1} / {totalQuestions}
+            </div>
           </div>
           <div className="flex items-center gap-2 px-3 h-9 rounded-full bg-warning/10 text-warning font-bold text-sm tabular-nums">
             <Clock className="size-4" /> {Math.ceil(timeLeft)}s
@@ -460,7 +572,19 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
         <section>
           <div className="p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6">
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">{question.text}</h2>
+            {question.image_url && (
+              <img
+                src={question.image_url}
+                alt=""
+                className="mt-5 mx-auto rounded-2xl max-h-64 object-contain"
+              />
+            )}
           </div>
+          {players.find((p) => p.user_id === userId)?.is_eliminated && (
+            <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-2xl text-center font-display font-bold">
+              💀 Tu es éliminé — observe les autres jusqu'à la fin de la partie.
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-3">
             {question.answers.map((a, i) => {
@@ -543,12 +667,13 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
                 return (
                   <div key={p.id} className={`flex items-center gap-2.5 p-2 rounded-xl text-sm transition-all ${
                     isMe ? "bg-primary/10 border border-primary/20" : ""
-                  }`}>
+                  } ${p.is_eliminated ? "opacity-50" : ""}`}>
                     <span className="w-5 text-xs font-bold text-muted-foreground tabular-nums">{idx + 1}</span>
                     <div className="size-7 rounded-full bg-primary/15 text-primary grid place-items-center font-bold text-xs">
                       {name[0].toUpperCase()}
                     </div>
                     <span className="font-semibold flex-1 truncate">{name}</span>
+                    {p.is_eliminated && <span className="text-xs">💀</span>}
                     <span className="text-xs font-bold tabular-nums">{p.score}</span>
                   </div>
                 );

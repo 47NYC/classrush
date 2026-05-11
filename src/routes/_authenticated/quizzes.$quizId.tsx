@@ -1,20 +1,26 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import Papa from "papaparse";
+import {
+  DndContext, PointerSensor, useSensor, useSensors, closestCenter,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, useSortable, arrayMove, verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { AppSidebar } from "@/components/AppSidebar";
+import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ArrowLeft, Plus, Trash2, Loader2, Save, Check, GripVertical,
-  Globe, Lock, Clock, Award,
+  Globe, Lock, Clock, Award, ImagePlus, Upload, X,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/quizzes/$quizId")({
-  head: () => ({
-    meta: [
-      { title: "Éditeur de quiz — ClassRush" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "Éditeur de quiz — ClassRush" }] }),
   component: QuizEditor,
 });
 
@@ -40,6 +46,7 @@ type QuestionRow = {
   quiz_id: string;
   position: number;
   text: string;
+  image_url: string | null;
   time_limit: number;
   points: number;
   answers: AnswerRow[];
@@ -49,8 +56,8 @@ const DIFFICULTIES: QuizMeta["difficulty"][] = ["easy", "medium", "hard"];
 
 function QuizEditor() {
   const { quizId } = Route.useParams();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["quiz-editor", quizId],
@@ -64,7 +71,7 @@ function QuizEditor() {
 
       const { data: questions, error: qsErr } = await supabase
         .from("questions")
-        .select("id, quiz_id, position, text, time_limit, points, answers(id, question_id, position, text, is_correct)")
+        .select("id, quiz_id, position, text, image_url, time_limit, points, answers(id, question_id, position, text, is_correct)")
         .eq("quiz_id", quizId)
         .order("position");
       if (qsErr) throw qsErr;
@@ -82,6 +89,7 @@ function QuizEditor() {
   const [questions, setQuestions] = useState<QuestionRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const csvInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (data) {
@@ -96,24 +104,23 @@ function QuizEditor() {
     setDirty(true);
   };
 
+  const newAnswer = (position: number, isCorrect = false): AnswerRow => ({
+    id: `new-${crypto.randomUUID()}`, question_id: "", position, text: "", is_correct: isCorrect,
+  });
+
+  const newQuestion = (position: number): QuestionRow => ({
+    id: `new-${crypto.randomUUID()}`,
+    quiz_id: quizId,
+    position,
+    text: "",
+    image_url: null,
+    time_limit: 20,
+    points: 100,
+    answers: [newAnswer(0, true), newAnswer(1), newAnswer(2), newAnswer(3)],
+  });
+
   const addQuestion = () => {
-    setQuestions((qs) => [
-      ...qs,
-      {
-        id: `new-${crypto.randomUUID()}`,
-        quiz_id: quizId,
-        position: qs.length,
-        text: "",
-        time_limit: 20,
-        points: 100,
-        answers: [
-          { id: `new-${crypto.randomUUID()}`, question_id: "", position: 0, text: "", is_correct: true },
-          { id: `new-${crypto.randomUUID()}`, question_id: "", position: 1, text: "", is_correct: false },
-          { id: `new-${crypto.randomUUID()}`, question_id: "", position: 2, text: "", is_correct: false },
-          { id: `new-${crypto.randomUUID()}`, question_id: "", position: 3, text: "", is_correct: false },
-        ],
-      },
-    ]);
+    setQuestions((qs) => [...qs, newQuestion(qs.length)]);
     setDirty(true);
   };
 
@@ -128,52 +135,103 @@ function QuizEditor() {
   };
 
   const updateAnswer = (qid: string, aid: string, patch: Partial<AnswerRow>) => {
-    setQuestions((qs) =>
-      qs.map((q) =>
-        q.id !== qid
-          ? q
-          : { ...q, answers: q.answers.map((a) => (a.id === aid ? { ...a, ...patch } : a)) }
-      )
-    );
+    setQuestions((qs) => qs.map((q) =>
+      q.id !== qid ? q : { ...q, answers: q.answers.map((a) => (a.id === aid ? { ...a, ...patch } : a)) }
+    ));
     setDirty(true);
   };
 
   const setCorrect = (qid: string, aid: string) => {
-    setQuestions((qs) =>
-      qs.map((q) =>
-        q.id !== qid
-          ? q
-          : { ...q, answers: q.answers.map((a) => ({ ...a, is_correct: a.id === aid })) }
-      )
-    );
+    setQuestions((qs) => qs.map((q) =>
+      q.id !== qid ? q : { ...q, answers: q.answers.map((a) => ({ ...a, is_correct: a.id === aid })) }
+    ));
     setDirty(true);
+  };
+
+  // Drag-and-drop
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    setQuestions((qs) => {
+      const oldIdx = qs.findIndex((q) => q.id === active.id);
+      const newIdx = qs.findIndex((q) => q.id === over.id);
+      if (oldIdx < 0 || newIdx < 0) return qs;
+      return arrayMove(qs, oldIdx, newIdx).map((q, i) => ({ ...q, position: i }));
+    });
+    setDirty(true);
+  };
+
+  // Image upload
+  const handleImageUpload = async (qid: string, file: File) => {
+    if (!user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image trop grande (max 5 Mo)");
+      return;
+    }
+    const ext = file.name.split(".").pop() || "png";
+    const path = `${user.id}/${quizId}/${crypto.randomUUID()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("quiz-images").upload(path, file, { upsert: false });
+    if (upErr) { toast.error(upErr.message); return; }
+    const { data: pub } = supabase.storage.from("quiz-images").getPublicUrl(path);
+    updateQuestion(qid, { image_url: pub.publicUrl });
+    toast.success("Image ajoutée");
+  };
+
+  // CSV import
+  // Format: text, time_limit, points, answer1, answer2, answer3, answer4, correct (1-4)
+  const handleCsvImport = (file: File) => {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const imported: QuestionRow[] = [];
+        let pos = questions.length;
+        for (const row of results.data) {
+          const text = (row.text || row.question || "").trim();
+          if (!text) continue;
+          const correctIdx = Math.max(1, Math.min(4, parseInt(row.correct || "1", 10))) - 1;
+          const ans = [1, 2, 3, 4].map((i) => (row[`answer${i}`] || row[`a${i}`] || "").trim());
+          imported.push({
+            id: `new-${crypto.randomUUID()}`,
+            quiz_id: quizId,
+            position: pos++,
+            text,
+            image_url: null,
+            time_limit: parseInt(row.time_limit || row.time || "20", 10) || 20,
+            points: parseInt(row.points || "100", 10) || 100,
+            answers: ans.map((t, i) => ({
+              id: `new-${crypto.randomUUID()}`, question_id: "", position: i,
+              text: t, is_correct: i === correctIdx,
+            })),
+          });
+        }
+        if (!imported.length) {
+          toast.error("Aucune question trouvée dans le CSV");
+          return;
+        }
+        setQuestions((qs) => [...qs, ...imported]);
+        setDirty(true);
+        toast.success(`${imported.length} question${imported.length > 1 ? "s" : ""} importée${imported.length > 1 ? "s" : ""}`);
+      },
+      error: (err) => toast.error(err.message),
+    });
   };
 
   const handleSave = async () => {
     if (!meta) return;
-    if (!meta.title.trim()) {
-      toast.error("Le titre est requis");
-      return;
-    }
+    if (!meta.title.trim()) { toast.error("Le titre est requis"); return; }
     for (const q of questions) {
-      if (!q.text.trim()) {
-        toast.error("Toutes les questions doivent avoir un énoncé");
-        return;
-      }
+      if (!q.text.trim()) { toast.error("Toutes les questions doivent avoir un énoncé"); return; }
       const filled = q.answers.filter((a) => a.text.trim()).length;
-      if (filled < 2) {
-        toast.error("Chaque question a besoin d'au moins 2 réponses");
-        return;
-      }
+      if (filled < 2) { toast.error("Chaque question a besoin d'au moins 2 réponses"); return; }
       if (!q.answers.some((a) => a.is_correct && a.text.trim())) {
-        toast.error("Chaque question doit avoir une bonne réponse");
-        return;
+        toast.error("Chaque question doit avoir une bonne réponse"); return;
       }
     }
 
     setSaving(true);
     try {
-      // 1. Update quiz meta
       const { error: metaErr } = await supabase
         .from("quizzes")
         .update({
@@ -186,7 +244,6 @@ function QuizEditor() {
         .eq("id", quizId);
       if (metaErr) throw metaErr;
 
-      // 2. Delete removed questions (cascade-ish: delete answers first)
       const existingIds = (data?.questions ?? []).map((q) => q.id);
       const keptIds = questions.filter((q) => !q.id.startsWith("new-")).map((q) => q.id);
       const toDelete = existingIds.filter((id) => !keptIds.includes(id));
@@ -195,7 +252,6 @@ function QuizEditor() {
         await supabase.from("questions").delete().in("id", toDelete);
       }
 
-      // 3. Upsert questions one-by-one to preserve answers cleanly
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const isNew = q.id.startsWith("new-");
@@ -205,38 +261,29 @@ function QuizEditor() {
           const { data: ins, error: insErr } = await supabase
             .from("questions")
             .insert({
-              quiz_id: quizId,
-              position: i,
-              text: q.text.trim(),
-              time_limit: q.time_limit,
-              points: q.points,
+              quiz_id: quizId, position: i, text: q.text.trim(),
+              image_url: q.image_url, time_limit: q.time_limit, points: q.points,
             })
-            .select("id")
-            .single();
+            .select("id").single();
           if (insErr) throw insErr;
           questionId = ins.id;
         } else {
           const { error: updErr } = await supabase
             .from("questions")
             .update({
-              position: i,
-              text: q.text.trim(),
-              time_limit: q.time_limit,
-              points: q.points,
+              position: i, text: q.text.trim(),
+              image_url: q.image_url, time_limit: q.time_limit, points: q.points,
             })
             .eq("id", q.id);
           if (updErr) throw updErr;
         }
 
-        // Replace all answers for this question (simpler than diffing)
         await supabase.from("answers").delete().eq("question_id", questionId);
         const validAnswers = q.answers
           .filter((a) => a.text.trim())
           .map((a, idx) => ({
-            question_id: questionId,
-            position: idx,
-            text: a.text.trim(),
-            is_correct: a.is_correct,
+            question_id: questionId, position: idx,
+            text: a.text.trim(), is_correct: a.is_correct,
           }));
         if (validAnswers.length) {
           const { error: aErr } = await supabase.from("answers").insert(validAnswers);
@@ -285,8 +332,26 @@ function QuizEditor() {
             <Link to="/quizzes" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="size-4" /> Mes quiz
             </Link>
-            <div className="flex items-center gap-3">
-              {dirty && <span className="text-xs text-muted-foreground hidden sm:inline">Modifications non enregistrées</span>}
+            <div className="flex items-center gap-2">
+              {dirty && <span className="text-xs text-muted-foreground hidden sm:inline mr-1">Modifications non enregistrées</span>}
+              <input
+                ref={csvInputRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleCsvImport(f);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                onClick={() => csvInputRef.current?.click()}
+                className="inline-flex items-center gap-2 h-10 px-4 bg-card border border-border rounded-2xl text-sm font-semibold btn-press hover:border-primary"
+                title="Format: text, time_limit, points, answer1..answer4, correct (1-4)"
+              >
+                <Upload className="size-4" /> Import CSV
+              </button>
               <button
                 onClick={() => updateMeta("is_public", !meta.is_public)}
                 className="inline-flex items-center gap-2 h-10 px-4 bg-card border border-border rounded-2xl text-sm font-semibold btn-press"
@@ -307,7 +372,6 @@ function QuizEditor() {
         </header>
 
         <div className="p-6 lg:p-10 max-w-4xl mx-auto space-y-6">
-          {/* Meta */}
           <section className="p-6 bg-card border border-border/60 rounded-2xl space-y-4">
             <input
               type="text"
@@ -353,20 +417,25 @@ function QuizEditor() {
             </div>
           </section>
 
-          {/* Questions */}
-          <div className="space-y-4">
-            {questions.map((q, idx) => (
-              <QuestionCard
-                key={q.id}
-                index={idx}
-                question={q}
-                onChange={(patch) => updateQuestion(q.id, patch)}
-                onAnswerChange={(aid, patch) => updateAnswer(q.id, aid, patch)}
-                onSetCorrect={(aid) => setCorrect(q.id, aid)}
-                onDelete={() => removeQuestion(q.id)}
-              />
-            ))}
-          </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={questions.map((q) => q.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-4">
+                {questions.map((q, idx) => (
+                  <SortableQuestion
+                    key={q.id}
+                    index={idx}
+                    question={q}
+                    onChange={(patch) => updateQuestion(q.id, patch)}
+                    onAnswerChange={(aid, patch) => updateAnswer(q.id, aid, patch)}
+                    onSetCorrect={(aid) => setCorrect(q.id, aid)}
+                    onDelete={() => removeQuestion(q.id)}
+                    onImageUpload={(file) => handleImageUpload(q.id, file)}
+                    onImageRemove={() => updateQuestion(q.id, { image_url: null })}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           <button
             onClick={addQuestion}
@@ -376,7 +445,7 @@ function QuizEditor() {
           </button>
 
           {questions.length === 0 && (
-            <p className="text-center text-sm text-muted-foreground">Commencez par ajouter une question.</p>
+            <p className="text-center text-sm text-muted-foreground">Commencez par ajouter une question ou importez un CSV.</p>
           )}
         </div>
       </main>
@@ -384,8 +453,32 @@ function QuizEditor() {
   );
 }
 
+function SortableQuestion(props: {
+  index: number;
+  question: QuestionRow;
+  onChange: (patch: Partial<QuestionRow>) => void;
+  onAnswerChange: (aid: string, patch: Partial<AnswerRow>) => void;
+  onSetCorrect: (aid: string) => void;
+  onDelete: () => void;
+  onImageUpload: (file: File) => void;
+  onImageRemove: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.question.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <div ref={setNodeRef} style={style}>
+      <QuestionCard {...props} dragHandle={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
 function QuestionCard({
   index, question, onChange, onAnswerChange, onSetCorrect, onDelete,
+  onImageUpload, onImageRemove, dragHandle,
 }: {
   index: number;
   question: QuestionRow;
@@ -393,7 +486,11 @@ function QuestionCard({
   onAnswerChange: (aid: string, patch: Partial<AnswerRow>) => void;
   onSetCorrect: (aid: string) => void;
   onDelete: () => void;
+  onImageUpload: (file: File) => void;
+  onImageRemove: () => void;
+  dragHandle?: React.HTMLAttributes<HTMLButtonElement>;
 }) {
+  const fileRef = useRef<HTMLInputElement>(null);
   const COLORS = [
     "bg-primary text-primary-foreground",
     "bg-warning text-white",
@@ -404,8 +501,15 @@ function QuestionCard({
     <article className="p-5 bg-card border border-border/60 rounded-2xl space-y-4">
       <div className="flex items-start gap-3">
         <div className="flex flex-col items-center text-muted-foreground">
-          <GripVertical className="size-4" />
-          <div className="mt-2 size-7 rounded-lg bg-primary/10 text-primary grid place-items-center text-xs font-bold">
+          <button
+            {...dragHandle}
+            className="cursor-grab active:cursor-grabbing p-1 hover:text-foreground"
+            aria-label="Réordonner"
+            type="button"
+          >
+            <GripVertical className="size-4" />
+          </button>
+          <div className="mt-1 size-7 rounded-lg bg-primary/10 text-primary grid place-items-center text-xs font-bold">
             {index + 1}
           </div>
         </div>
@@ -416,14 +520,53 @@ function QuestionCard({
           placeholder="Énoncé de la question…"
           className="flex-1 bg-transparent outline-none font-semibold text-base placeholder:text-muted-foreground/50"
         />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onImageUpload(f);
+            e.target.value = "";
+          }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="size-9 grid place-items-center bg-muted text-muted-foreground rounded-xl hover:bg-primary/10 hover:text-primary"
+          aria-label="Ajouter une image"
+          title="Ajouter une image"
+          type="button"
+        >
+          <ImagePlus className="size-4" />
+        </button>
         <button
           onClick={onDelete}
           className="size-9 grid place-items-center bg-destructive/10 text-destructive rounded-xl hover:bg-destructive/20"
           aria-label="Supprimer la question"
+          type="button"
         >
           <Trash2 className="size-4" />
         </button>
       </div>
+
+      {question.image_url && (
+        <div className="pl-10 relative">
+          <img
+            src={question.image_url}
+            alt="Illustration de la question"
+            className="rounded-xl max-h-48 object-cover border border-border"
+          />
+          <button
+            onClick={onImageRemove}
+            className="absolute top-1 right-1 size-7 grid place-items-center bg-background/90 backdrop-blur border border-border rounded-lg hover:bg-destructive hover:text-white"
+            aria-label="Retirer l'image"
+            type="button"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+      )}
 
       <div className="flex items-center gap-4 text-xs text-muted-foreground pl-10">
         <label className="inline-flex items-center gap-1.5">
@@ -474,12 +617,11 @@ function QuestionCard({
             <button
               onClick={() => onSetCorrect(a.id)}
               className={`size-7 rounded-md grid place-items-center shrink-0 transition-colors ${
-                a.is_correct
-                  ? "bg-success text-white"
-                  : "bg-muted text-muted-foreground hover:bg-success/20 hover:text-success"
+                a.is_correct ? "bg-success text-white" : "bg-muted text-muted-foreground hover:bg-success/20 hover:text-success"
               }`}
               aria-label="Marquer comme bonne réponse"
               title="Marquer comme bonne réponse"
+              type="button"
             >
               <Check className="size-3.5" />
             </button>

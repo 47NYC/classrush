@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { z } from "zod";
 import { PageShell, PageHeader } from "@/components/PageShell";
@@ -20,6 +21,23 @@ function ProfilePage() {
   const { profile, refreshProfile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name ?? "");
   const [saving, setSaving] = useState(false);
+
+  const { data: equipped } = useQuery({
+    queryKey: ["profile-equipped", profile?.id],
+    enabled: !!profile?.id,
+    queryFn: async () => {
+      const { data: row } = await supabase.from("profiles")
+        .select("equipped_avatar_item, equipped_theme_item").eq("id", profile!.id).single();
+      const ids = [row?.equipped_avatar_item, row?.equipped_theme_item].filter(Boolean) as string[];
+      if (!ids.length) return { avatar: null, theme: null };
+      const { data: items } = await supabase.from("shop_items")
+        .select("id, name, preview_emoji, preview_color").in("id", ids);
+      return {
+        avatar: items?.find((i) => i.id === row?.equipped_avatar_item) ?? null,
+        theme: items?.find((i) => i.id === row?.equipped_theme_item) ?? null,
+      };
+    },
+  });
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,14 +64,19 @@ function ProfilePage() {
   if (!profile) return <PageShell><div className="grid place-items-center h-64"><Loader2 className="size-6 animate-spin text-primary" /></div></PageShell>;
 
   const initial = (profile.display_name || profile.username)[0].toUpperCase();
+  const avatarEmoji = equipped?.avatar?.preview_emoji ?? null;
+  const themeColor = equipped?.theme?.preview_color ?? null;
 
   return (
     <PageShell>
       <PageHeader subtitle="Compte" title="Profil" />
       <div className="max-w-2xl mx-auto space-y-6">
         <section className="p-6 bg-card border border-border/60 rounded-2xl flex items-center gap-5">
-          <div className="size-20 rounded-full bg-primary text-primary-foreground grid place-items-center font-display text-3xl font-bold">
-            {initial}
+          <div
+            className="size-20 rounded-full grid place-items-center font-display text-3xl font-bold text-primary-foreground"
+            style={{ background: themeColor ?? "var(--primary)" }}
+          >
+            {avatarEmoji ?? initial}
           </div>
           <div>
             <h2 className="font-display text-xl font-bold">{profile.display_name || profile.username}</h2>

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { PageShell, PageHeader } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { PlayCircle, Loader2, BookOpen, Search } from "lucide-react";
+import { PlayCircle, Loader2, BookOpen, Search, Zap, Skull, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/play")({
   head: () => ({ meta: [{ title: "Jouer — ClassRush" }] }),
@@ -17,11 +17,20 @@ type PlayQuiz = {
   plays_count: number; question_count: number;
 };
 
+type GameMode = "classic" | "survival" | "speedrun";
+
+const MODES: { value: GameMode; label: string; description: string; icon: typeof PlayCircle; accent: string }[] = [
+  { value: "classic", label: "Classic", description: "Score basé sur la vitesse et la précision.", icon: Trophy, accent: "text-primary bg-primary/10 border-primary" },
+  { value: "survival", label: "Survival", description: "Une mauvaise réponse et tu es éliminé !", icon: Skull, accent: "text-destructive bg-destructive/10 border-destructive" },
+  { value: "speedrun", label: "Speedrun", description: "Bonus de vitesse maximal sur chaque question.", icon: Zap, accent: "text-warning bg-warning/10 border-warning" },
+];
+
 function PlayPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [creating, setCreating] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "mine">("all");
+  const [mode, setMode] = useState<GameMode>("classic");
 
   const { data: quizzes, isLoading } = useQuery({
     queryKey: ["play-quizzes", tab, user?.id],
@@ -57,7 +66,7 @@ function PlayPage() {
       }
       const { data, error } = await supabase
         .from("rooms")
-        .insert({ host_id: user.id, quiz_id: quizId, mode: "classic" })
+        .insert({ host_id: user.id, quiz_id: quizId, mode })
         .select("id, code")
         .single();
       if (error) throw error;
@@ -84,6 +93,31 @@ function PlayPage() {
       } />
 
       <div className="max-w-6xl mx-auto">
+        <div className="mb-6">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Mode de jeu</p>
+          <div className="grid sm:grid-cols-3 gap-3">
+            {MODES.map((m) => {
+              const active = mode === m.value;
+              const Icon = m.icon;
+              return (
+                <button
+                  key={m.value}
+                  onClick={() => setMode(m.value)}
+                  className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                    active ? m.accent : "bg-card border-border hover:border-primary/40 text-foreground"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Icon className="size-5" />
+                    <span className="font-display font-bold">{m.label}</span>
+                  </div>
+                  <p className={`text-xs ${active ? "opacity-90" : "text-muted-foreground"}`}>{m.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="inline-flex bg-card border border-border rounded-2xl p-1 mb-6">
           {(["all", "mine"] as const).map((t) => (
             <button
