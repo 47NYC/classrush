@@ -89,18 +89,6 @@ function Hero() {
   );
 }
 
-function TrustBar() {
-  return (
-    <section className="border-y border-border/60 bg-card/50">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-sm text-muted-foreground">
-        <span className="text-xs font-semibold tracking-widest uppercase">Adopté par</span>
-        {["École Lumière", "Lycée Connect", "Académie Nova", "Collège Horizon", "Studio Apprendre"].map((n) => (
-          <span key={n} className="font-display font-bold text-foreground/40 text-base">{n}</span>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 const features = [
   { icon: Gamepad2, title: "10 modes de jeu", desc: "Classic, Survival, Team Battle, Race, Boss, Tournoi… variez les expériences pour ne jamais lasser.", color: "text-primary", bg: "bg-primary/10" },
@@ -221,41 +209,6 @@ function Audiences() {
   );
 }
 
-const testimonials = [
-  { quote: "Mes élèves de 5e en redemandent. Les révisions ne sont plus une corvée.", name: "Claire D.", role: "Professeure de SVT" },
-  { quote: "Je joue avec mes potes le soir pour réviser. C'est comme un jeu mais on apprend vraiment.", name: "Lucas, 14 ans", role: "Élève" },
-  { quote: "L'interface est claire, les enfants comprennent tout de suite. Très rassurant pour les parents.", name: "Marc P.", role: "Parent" },
-];
-
-function Testimonials() {
-  return (
-    <section className="bg-card border-y border-border/60 py-24 lg:py-32">
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="text-sm font-bold tracking-widest uppercase text-primary">Témoignages</span>
-          <h2 className="mt-3 text-4xl md:text-5xl font-bold">Aimé par toute la classe</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {testimonials.map((t) => (
-            <div key={t.name} className="p-7 bg-background rounded-3xl border border-border/60">
-              <div className="text-warning text-lg mb-3">★★★★★</div>
-              <p className="text-foreground leading-relaxed mb-6">"{t.quote}"</p>
-              <div className="flex items-center gap-3 pt-5 border-t border-border/60">
-                <div className="size-10 rounded-full bg-primary/15 text-primary grid place-items-center font-bold">
-                  {t.name[0]}
-                </div>
-                <div>
-                  <div className="font-semibold text-sm">{t.name}</div>
-                  <div className="text-xs text-muted-foreground">{t.role}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 function Security() {
   return (
