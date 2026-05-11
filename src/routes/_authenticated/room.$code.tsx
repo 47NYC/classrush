@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
-  X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award,
+  X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
@@ -206,6 +206,7 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
   };
 
   const copy = () => { navigator.clipboard.writeText(room.code); toast.success("Code copié !"); };
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-background">
@@ -282,7 +283,93 @@ function Lobby({ room, players, profiles, isHost, onLeave }: {
               En attente du lancement par l'hôte…
             </div>
           )}
+          <button
+            onClick={() => setInviteOpen(true)}
+            className="mt-3 w-full h-11 inline-flex items-center justify-center gap-2 bg-card border border-border rounded-2xl text-sm font-semibold btn-press hover:border-primary"
+          >
+            <UserPlus className="size-4" /> Inviter des amis
+          </button>
         </section>
+      </div>
+      {inviteOpen && (
+        <InviteFriendsModal
+          roomId={room.id}
+          roomCode={room.code}
+          onClose={() => setInviteOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function InviteFriendsModal({ roomId, roomCode, onClose }: { roomId: string; roomCode: string; onClose: () => void }) {
+  const { user } = useAuth();
+  const [friends, setFriends] = useState<{ id: string; name: string }[]>([]);
+  const [sent, setSent] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data: rows } = await supabase
+        .from("friendships")
+        .select("requester_id, addressee_id, status")
+        .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+        .eq("status", "accepted");
+      const ids = (rows ?? []).map((f) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
+      if (!ids.length) { setLoading(false); return; }
+      const { data: profs } = await supabase
+        .from("profiles").select("id, username, display_name").in("id", ids);
+      setFriends((profs ?? []).map((p) => ({ id: p.id, name: p.display_name || p.username })));
+      setLoading(false);
+    })();
+  }, [user]);
+
+  const invite = async (friendId: string) => {
+    if (!user) return;
+    const { error } = await supabase.from("room_invites").insert({
+      room_id: roomId, room_code: roomCode, from_user: user.id, to_user: friendId, status: "pending",
+    });
+    if (error) { toast.error(error.message); return; }
+    setSent((s) => new Set(s).add(friendId));
+    toast.success("Invitation envoyée");
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 grid place-items-center p-4" onClick={onClose}>
+      <div className="bg-card border border-border rounded-3xl p-6 w-full max-w-md shadow-card" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-bold text-lg">Inviter des amis</h3>
+          <button onClick={onClose} className="size-8 grid place-items-center rounded-lg hover:bg-muted">
+            <XIcon className="size-4" />
+          </button>
+        </div>
+        {loading ? (
+          <div className="grid place-items-center py-8"><Loader2 className="size-5 animate-spin text-primary" /></div>
+        ) : friends.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">Aucun ami pour le moment. Ajoute-en depuis la page Amis.</p>
+        ) : (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {friends.map((f) => {
+              const isSent = sent.has(f.id);
+              return (
+                <div key={f.id} className="flex items-center gap-3 p-2.5 bg-background border border-border rounded-xl">
+                  <div className="size-9 rounded-full bg-primary/15 text-primary grid place-items-center font-bold text-sm">
+                    {f.name[0]?.toUpperCase()}
+                  </div>
+                  <span className="font-semibold flex-1 truncate text-sm">{f.name}</span>
+                  <button
+                    onClick={() => invite(f.id)}
+                    disabled={isSent}
+                    className="inline-flex items-center gap-1 h-8 px-3 bg-primary text-primary-foreground text-xs font-semibold rounded-lg btn-press disabled:opacity-50"
+                  >
+                    {isSent ? <><Check className="size-3" /> Envoyé</> : <><Send className="size-3" /> Inviter</>}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
