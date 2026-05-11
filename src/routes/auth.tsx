@@ -121,8 +121,6 @@ function AuthPage() {
             </div>
 
             <div className="space-y-3 mb-6">
-              <button className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-2xl font-semibold text-sm hover:border-primary btn-press">
-            <div className="space-y-3 mb-6">
               <button
                 type="button"
                 onClick={handleGoogle}
