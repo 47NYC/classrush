@@ -28,11 +28,9 @@ function LandingPage() {
     <div className="min-h-screen bg-background">
       <SiteHeader />
       <Hero />
-      <TrustBar />
       <Features />
       <HowItWorks />
       <Audiences />
-      <Testimonials />
       <Security />
       <FinalCta />
       <SiteFooter />
