@@ -22,6 +22,7 @@ import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedChallengesRouteImport } from './routes/_authenticated/challenges'
 import { Route as AuthenticatedQuizzesIndexRouteImport } from './routes/_authenticated/quizzes.index'
+import { Route as AuthenticatedRoomCodeRouteImport } from './routes/_authenticated/room.$code'
 import { Route as AuthenticatedQuizzesQuizIdRouteImport } from './routes/_authenticated/quizzes.$quizId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -90,6 +91,11 @@ const AuthenticatedQuizzesIndexRoute =
     path: '/quizzes/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedRoomCodeRoute = AuthenticatedRoomCodeRouteImport.update({
+  id: '/room/$code',
+  path: '/room/$code',
+  getParentRoute: () => AuthenticatedRoute,
+} as any)
 const AuthenticatedQuizzesQuizIdRoute =
   AuthenticatedQuizzesQuizIdRouteImport.update({
     id: '/quizzes/$quizId',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/shop': typeof AuthenticatedShopRoute
   '/tournaments': typeof AuthenticatedTournamentsRoute
   '/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
+  '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/quizzes/': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -125,6 +132,7 @@ export interface FileRoutesByTo {
   '/shop': typeof AuthenticatedShopRoute
   '/tournaments': typeof AuthenticatedTournamentsRoute
   '/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
+  '/room/$code': typeof AuthenticatedRoomCodeRoute
   '/quizzes': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRoutesById {
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/_authenticated/shop': typeof AuthenticatedShopRoute
   '/_authenticated/tournaments': typeof AuthenticatedTournamentsRoute
   '/_authenticated/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
+  '/_authenticated/room/$code': typeof AuthenticatedRoomCodeRoute
   '/_authenticated/quizzes/': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRouteTypes {
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/tournaments'
     | '/quizzes/$quizId'
+    | '/room/$code'
     | '/quizzes/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/shop'
     | '/tournaments'
     | '/quizzes/$quizId'
+    | '/room/$code'
     | '/quizzes'
   id:
     | '__root__'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/_authenticated/shop'
     | '/_authenticated/tournaments'
     | '/_authenticated/quizzes/$quizId'
+    | '/_authenticated/room/$code'
     | '/_authenticated/quizzes/'
   fileRoutesById: FileRoutesById
 }
@@ -292,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuizzesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/room/$code': {
+      id: '/_authenticated/room/$code'
+      path: '/room/$code'
+      fullPath: '/room/$code'
+      preLoaderRoute: typeof AuthenticatedRoomCodeRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/quizzes/$quizId': {
       id: '/_authenticated/quizzes/$quizId'
       path: '/quizzes/$quizId'
@@ -313,6 +332,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedShopRoute: typeof AuthenticatedShopRoute
   AuthenticatedTournamentsRoute: typeof AuthenticatedTournamentsRoute
   AuthenticatedQuizzesQuizIdRoute: typeof AuthenticatedQuizzesQuizIdRoute
+  AuthenticatedRoomCodeRoute: typeof AuthenticatedRoomCodeRoute
   AuthenticatedQuizzesIndexRoute: typeof AuthenticatedQuizzesIndexRoute
 }
 
@@ -327,6 +347,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedShopRoute: AuthenticatedShopRoute,
   AuthenticatedTournamentsRoute: AuthenticatedTournamentsRoute,
   AuthenticatedQuizzesQuizIdRoute: AuthenticatedQuizzesQuizIdRoute,
+  AuthenticatedRoomCodeRoute: AuthenticatedRoomCodeRoute,
   AuthenticatedQuizzesIndexRoute: AuthenticatedQuizzesIndexRoute,
 }
 
