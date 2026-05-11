@@ -80,15 +80,9 @@ function Hero() {
               </button>
             </div>
           </div>
-          <div className="mt-10 flex items-center gap-6 text-sm text-muted-foreground">
-            <div className="flex -space-x-2">
-              {["bg-primary", "bg-warning", "bg-success", "bg-destructive"].map((c, i) => (
-                <div key={i} className={`size-8 rounded-full border-2 border-background ${c}`} />
-              ))}
-            </div>
-            <span>
-              <strong className="text-foreground">+50 000 élèves</strong> jouent chaque semaine
-            </span>
+          <div className="mt-10 flex items-center gap-3 text-sm text-muted-foreground">
+            <ShieldCheck className="size-4 text-success" />
+            <span>Sans publicité · Conforme RGPD · Données hébergées en Europe</span>
           </div>
         </div>
         <HeroMockup />
