@@ -8,7 +8,9 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
 
-const items = [
+type NavItem = { to: "/dashboard" | "/quizzes"; icon: typeof Home; label: string; disabled?: boolean };
+
+const items: NavItem[] = [
   { to: "/dashboard", icon: Home, label: "Accueil" },
   { to: "/dashboard", icon: Gamepad2, label: "Jouer", disabled: true },
   { to: "/quizzes", icon: BookOpen, label: "Mes quiz" },
@@ -18,7 +20,7 @@ const items = [
   { to: "/dashboard", icon: ShoppingBag, label: "Boutique", disabled: true },
   { to: "/dashboard", icon: User, label: "Profil", disabled: true },
   { to: "/dashboard", icon: Settings, label: "Paramètres", disabled: true },
-] as const;
+];
 
 export function AppSidebar() {
   const location = useLocation();
