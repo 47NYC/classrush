@@ -1,13 +1,13 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
+import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Home, Gamepad2, BookOpen, Users, Trophy, Target, ShoppingBag,
-  User, Settings, Bell, PlayCircle, KeyRound, Flame, Sparkles,
-  TrendingUp, Award, ChevronRight, LogOut, Loader2,
+  Users, Bell, PlayCircle, KeyRound, Flame, Sparkles,
+  TrendingUp, Award, ChevronRight, Loader2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -21,21 +21,8 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
-const navItems = [
-  { icon: Home, label: "Accueil", active: true },
-  { icon: Gamepad2, label: "Jouer" },
-  { icon: BookOpen, label: "Mes quiz" },
-  { icon: Users, label: "Amis" },
-  { icon: Trophy, label: "Tournois" },
-  { icon: Target, label: "Défis" },
-  { icon: ShoppingBag, label: "Boutique" },
-  { icon: User, label: "Profil" },
-  { icon: Settings, label: "Paramètres" },
-];
-
 function Dashboard() {
-  const { profile, signOut } = useAuth();
-  const navigate = useNavigate();
+  const { profile } = useAuth();
 
   const { data: popularQuizzes } = useQuery({
     queryKey: ["popular-quizzes"],
@@ -51,42 +38,12 @@ function Dashboard() {
     },
   });
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast.success("Déconnecté");
-    navigate({ to: "/" });
-  };
-
   const initial = (profile?.display_name || profile?.username || "?")[0].toUpperCase();
   const displayName = profile?.display_name || profile?.username || "Joueur";
 
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border/60 p-6 sticky top-0 h-screen">
-        <Logo />
-        <nav className="mt-10 flex-1 space-y-1">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium transition-all ${
-                item.active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <item.icon className="size-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <button
-          onClick={handleSignOut}
-          className="mt-2 w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="size-4" />
-          Se déconnecter
-        </button>
-      </aside>
+      <AppSidebar />
 
       <main className="flex-1 min-w-0">
         <TopBar coins={profile?.coins ?? 0} initial={initial} />
