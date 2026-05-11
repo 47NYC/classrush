@@ -359,10 +359,22 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 
   const handlePick = async (answer: AnswerRow) => {
     if (!question || hasAnswered || timeLeft <= 0) return;
+    // Eliminated players (Survival) cannot answer
+    const meRow = players.find((p) => p.user_id === userId);
+    if (meRow?.is_eliminated) return;
     setHasAnswered(true);
     setSelectedAnswer(answer.id);
-    // Score: full points if correct, weighted slightly by speed (50%-100%)
-    const speedFactor = 0.5 + 0.5 * (timeLeft / timeLimit);
+    // Speed factor depends on mode
+    const speedRatio = timeLeft / timeLimit;
+    let speedFactor: number;
+    if (room.mode === "speedrun") {
+      // Stronger speed weighting (25%-100% bonus over base)
+      speedFactor = 0.25 + 1.5 * speedRatio;
+    } else if (room.mode === "survival") {
+      speedFactor = 0.5 + 0.5 * speedRatio;
+    } else {
+      speedFactor = 0.5 + 0.5 * speedRatio;
+    }
     const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
     setShowFeedback({ correct: answer.is_correct, points: earned });
 
@@ -383,6 +395,10 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
       const me = players.find((p) => p.user_id === userId);
       const newScore = (me?.score ?? 0) + earned;
       await supabase.from("room_players").update({ score: newScore }).eq("room_id", room.id).eq("user_id", userId);
+    }
+    // Survival mode: wrong answer eliminates the player
+    if (room.mode === "survival" && !answer.is_correct) {
+      await supabase.from("room_players").update({ is_eliminated: true }).eq("room_id", room.id).eq("user_id", userId);
     }
   };
 
