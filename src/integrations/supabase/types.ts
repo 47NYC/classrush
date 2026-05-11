@@ -49,6 +49,33 @@ export type Database = {
           },
         ]
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: Database["public"]["Enums"]["friendship_status"]
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       player_answers: {
         Row: {
           answer_id: string | null
@@ -110,6 +137,8 @@ export type Database = {
           coins: number
           created_at: string
           display_name: string | null
+          equipped_avatar_item: string | null
+          equipped_theme_item: string | null
           friend_code: string
           id: string
           level: number
@@ -124,6 +153,8 @@ export type Database = {
           coins?: number
           created_at?: string
           display_name?: string | null
+          equipped_avatar_item?: string | null
+          equipped_theme_item?: string | null
           friend_code?: string
           id: string
           level?: number
@@ -138,6 +169,8 @@ export type Database = {
           coins?: number
           created_at?: string
           display_name?: string | null
+          equipped_avatar_item?: string | null
+          equipped_theme_item?: string | null
           friend_code?: string
           id?: string
           level?: number
@@ -243,6 +276,36 @@ export type Database = {
         }
         Relationships: []
       }
+      room_invites: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          room_code: string
+          room_id: string
+          status: string
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          room_code: string
+          room_id: string
+          status?: string
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          room_code?: string
+          room_id?: string
+          status?: string
+          to_user?: string
+        }
+        Relationships: []
+      }
       room_players: {
         Row: {
           id: string
@@ -340,6 +403,77 @@ export type Database = {
           },
         ]
       }
+      shop_items: {
+        Row: {
+          category: Database["public"]["Enums"]["item_category"]
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          preview_color: string | null
+          preview_emoji: string | null
+          price: number
+          rarity: Database["public"]["Enums"]["item_rarity"]
+          slug: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["item_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          preview_color?: string | null
+          preview_emoji?: string | null
+          price?: number
+          rarity?: Database["public"]["Enums"]["item_rarity"]
+          slug: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["item_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          preview_color?: string | null
+          preview_emoji?: string | null
+          price?: number
+          rarity?: Database["public"]["Enums"]["item_rarity"]
+          slug?: string
+        }
+        Relationships: []
+      }
+      user_inventory: {
+        Row: {
+          acquired_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_inventory_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "shop_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -378,6 +512,7 @@ export type Database = {
     Enums: {
       app_role: "user" | "teacher" | "admin"
       difficulty: "easy" | "medium" | "hard"
+      friendship_status: "pending" | "accepted" | "blocked"
       game_mode:
         | "classic"
         | "survival"
@@ -389,6 +524,9 @@ export type Database = {
         | "arena"
         | "chaos"
         | "tournament"
+        | "speedrun"
+      item_category: "avatar" | "theme" | "badge" | "frame"
+      item_rarity: "common" | "rare" | "epic" | "legendary"
       room_status: "lobby" | "live" | "finished" | "cancelled"
     }
     CompositeTypes: {
@@ -519,6 +657,7 @@ export const Constants = {
     Enums: {
       app_role: ["user", "teacher", "admin"],
       difficulty: ["easy", "medium", "hard"],
+      friendship_status: ["pending", "accepted", "blocked"],
       game_mode: [
         "classic",
         "survival",
@@ -530,7 +669,10 @@ export const Constants = {
         "arena",
         "chaos",
         "tournament",
+        "speedrun",
       ],
+      item_category: ["avatar", "theme", "badge", "frame"],
+      item_rarity: ["common", "rare", "epic", "legendary"],
       room_status: ["lobby", "live", "finished", "cancelled"],
     },
   },
