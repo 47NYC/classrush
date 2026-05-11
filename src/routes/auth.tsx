@@ -35,16 +35,9 @@ function AuthPage() {
           <h2 className="font-display text-4xl xl:text-5xl font-bold leading-tight text-balance">
             "Apprendre devient un moment qu'on attend avec impatience."
           </h2>
-          <div className="flex items-center gap-3 text-sm">
-            <div className="flex -space-x-2">
-              {["bg-warning", "bg-success", "bg-destructive", "bg-primary-foreground/30"].map((c, i) => (
-                <div key={i} className={`size-9 rounded-full border-2 border-primary ${c}`} />
-              ))}
-            </div>
-            <span className="text-primary-foreground/85">
-              Rejoignez +50 000 élèves & enseignants
-            </span>
-          </div>
+          <p className="text-primary-foreground/85 text-sm leading-relaxed">
+            Créez votre compte gratuit, rejoignez vos amis avec un code à 6 chiffres et lancez votre première partie en quelques secondes.
+          </p>
         </div>
 
         <div className="relative text-xs text-primary-foreground/70">
