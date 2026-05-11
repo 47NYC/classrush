@@ -39,42 +39,16 @@ function Dashboard() {
     },
   });
 
-  const handleSignOut = async () => {
-    await signOut();
-    toast.success("Déconnecté");
-    navigate({ to: "/" });
-  };
+  // signOut moved to AppSidebar
+  void signOut;
+  void navigate;
 
   const initial = (profile?.display_name || profile?.username || "?")[0].toUpperCase();
   const displayName = profile?.display_name || profile?.username || "Joueur";
 
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border/60 p-6 sticky top-0 h-screen">
-        <Logo />
-        <nav className="mt-10 flex-1 space-y-1">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={`w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium transition-all ${
-                item.active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <item.icon className="size-4" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <button
-          onClick={handleSignOut}
-          className="mt-2 w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          <LogOut className="size-4" />
-          Se déconnecter
-        </button>
-      </aside>
+      <AppSidebar />
 
       <main className="flex-1 min-w-0">
         <TopBar coins={profile?.coins ?? 0} initial={initial} />
