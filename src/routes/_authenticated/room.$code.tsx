@@ -417,7 +417,8 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     },
   });
 
-  const everyoneAnswered = (answerCount ?? 0) >= players.length && players.length > 0;
+  const activePlayers = players.filter((p) => !p.is_eliminated);
+  const everyoneAnswered = (answerCount ?? 0) >= activePlayers.length && activePlayers.length > 0;
 
   // HOST auto-advance: when timer expires OR everyone answered
   useEffect(() => {
@@ -428,7 +429,9 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     advanceLockRef.current = room.current_question;
     const t = setTimeout(async () => {
       const next = room.current_question + 1;
-      if (next >= totalQuestions) {
+      // Survival: if everyone is eliminated, end the game
+      const allDead = room.mode === "survival" && activePlayers.length === 0;
+      if (next >= totalQuestions || allDead) {
         await supabase.from("rooms").update({ status: "finished", finished_at: new Date().toISOString() }).eq("id", room.id);
       } else {
         await supabase.from("rooms").update({
