@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
+import { InvitesBell } from "@/components/InvitesBell";
 import {
   Home, Gamepad2, BookOpen, Users, Trophy, Target, ShoppingBag,
   User, Settings, LogOut,
@@ -58,6 +59,7 @@ export function AppSidebar() {
           );
         })}
       </nav>
+      <InvitesBell />
       <button
         onClick={handleSignOut}
         className="mt-2 w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
