@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedQuizzesIndexRouteImport } from './routes/_authenticated/quizzes.index'
+import { Route as AuthenticatedQuizzesQuizIdRouteImport } from './routes/_authenticated/quizzes.$quizId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -40,17 +41,25 @@ const AuthenticatedQuizzesIndexRoute =
     path: '/quizzes/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedQuizzesQuizIdRoute =
+  AuthenticatedQuizzesQuizIdRouteImport.update({
+    id: '/quizzes/$quizId',
+    path: '/quizzes/$quizId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
   '/quizzes/': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
   '/quizzes': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRoutesById {
@@ -59,19 +68,21 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/quizzes/$quizId': typeof AuthenticatedQuizzesQuizIdRoute
   '/_authenticated/quizzes/': typeof AuthenticatedQuizzesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/quizzes/'
+  fullPaths: '/' | '/auth' | '/dashboard' | '/quizzes/$quizId' | '/quizzes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/quizzes'
+  to: '/' | '/auth' | '/dashboard' | '/quizzes/$quizId' | '/quizzes'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/quizzes/$quizId'
     | '/_authenticated/quizzes/'
   fileRoutesById: FileRoutesById
 }
@@ -118,16 +129,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedQuizzesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/quizzes/$quizId': {
+      id: '/_authenticated/quizzes/$quizId'
+      path: '/quizzes/$quizId'
+      fullPath: '/quizzes/$quizId'
+      preLoaderRoute: typeof AuthenticatedQuizzesQuizIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
   }
 }
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedQuizzesQuizIdRoute: typeof AuthenticatedQuizzesQuizIdRoute
   AuthenticatedQuizzesIndexRoute: typeof AuthenticatedQuizzesIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedQuizzesQuizIdRoute: AuthenticatedQuizzesQuizIdRoute,
   AuthenticatedQuizzesIndexRoute: AuthenticatedQuizzesIndexRoute,
 }
 
