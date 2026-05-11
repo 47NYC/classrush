@@ -1,4 +1,4 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -6,20 +6,23 @@ import {
   User, Settings, LogOut,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useNavigate } from "@tanstack/react-router";
 
-type NavItem = { to: "/dashboard" | "/quizzes"; icon: typeof Home; label: string; disabled?: boolean };
+type NavItem = {
+  to: "/dashboard" | "/play" | "/quizzes" | "/friends" | "/tournaments" | "/challenges" | "/shop" | "/profile" | "/settings";
+  icon: typeof Home;
+  label: string;
+};
 
 const items: NavItem[] = [
   { to: "/dashboard", icon: Home, label: "Accueil" },
-  { to: "/dashboard", icon: Gamepad2, label: "Jouer", disabled: true },
+  { to: "/play", icon: Gamepad2, label: "Jouer" },
   { to: "/quizzes", icon: BookOpen, label: "Mes quiz" },
-  { to: "/dashboard", icon: Users, label: "Amis", disabled: true },
-  { to: "/dashboard", icon: Trophy, label: "Tournois", disabled: true },
-  { to: "/dashboard", icon: Target, label: "Défis", disabled: true },
-  { to: "/dashboard", icon: ShoppingBag, label: "Boutique", disabled: true },
-  { to: "/dashboard", icon: User, label: "Profil", disabled: true },
-  { to: "/dashboard", icon: Settings, label: "Paramètres", disabled: true },
+  { to: "/friends", icon: Users, label: "Amis" },
+  { to: "/tournaments", icon: Trophy, label: "Tournois" },
+  { to: "/challenges", icon: Target, label: "Défis" },
+  { to: "/shop", icon: ShoppingBag, label: "Boutique" },
+  { to: "/profile", icon: User, label: "Profil" },
+  { to: "/settings", icon: Settings, label: "Paramètres" },
 ];
 
 export function AppSidebar() {
@@ -38,19 +41,7 @@ export function AppSidebar() {
       <Logo />
       <nav className="mt-10 flex-1 space-y-1">
         {items.map((item) => {
-          const active = location.pathname === item.to || (item.to !== "/dashboard" && location.pathname.startsWith(item.to));
-          if (item.disabled) {
-            return (
-              <button
-                key={item.label}
-                onClick={() => toast.info("Bientôt disponible")}
-                className="w-full flex items-center gap-3 px-3.5 h-11 rounded-2xl text-sm font-medium text-muted-foreground/60 hover:bg-muted/60 hover:text-muted-foreground"
-              >
-                <item.icon className="size-4" />
-                {item.label}
-              </button>
-            );
-          }
+          const active = location.pathname === item.to;
           return (
             <Link
               key={item.label}

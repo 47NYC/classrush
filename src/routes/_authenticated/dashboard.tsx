@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -130,10 +130,16 @@ function Greeting({ name, level, xp }: { name: string; level: number; xp: number
 
 function PlayCards() {
   const [code, setCode] = useState("");
+  const navigate = useNavigate();
+  const handleJoin = () => {
+    const c = code.trim().toUpperCase();
+    if (c.length !== 6) { toast.error("Code à 6 caractères requis"); return; }
+    navigate({ to: "/join" });
+  };
   return (
     <div className="grid md:grid-cols-2 gap-5">
-      <button
-        onClick={() => toast.info("Le créateur de partie arrive bientôt")}
+      <Link
+        to="/play"
         className="group relative overflow-hidden text-left p-8 bg-primary text-primary-foreground rounded-3xl shadow-glow btn-press"
       >
         <div className="absolute -top-12 -right-12 size-44 rounded-full bg-primary-foreground/10 blur-2xl" />
@@ -143,13 +149,13 @@ function PlayCards() {
           </div>
           <h3 className="font-display text-2xl font-bold mb-2">Créer une partie</h3>
           <p className="text-primary-foreground/85 text-sm mb-5">
-            Lancez une room, choisissez un mode et invitez vos amis en un clic.
+            Choisissez un quiz, lancez une room et invitez vos amis en un clic.
           </p>
           <div className="inline-flex items-center gap-1.5 text-sm font-semibold">
             Commencer <ChevronRight className="size-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </div>
-      </button>
+      </Link>
 
       <div className="p-8 bg-card border border-border/60 rounded-3xl shadow-soft">
         <div className="size-14 rounded-2xl bg-warning/15 text-warning grid place-items-center mb-5">
@@ -157,7 +163,7 @@ function PlayCards() {
         </div>
         <h3 className="font-display text-2xl font-bold mb-2">Rejoindre une partie</h3>
         <p className="text-muted-foreground text-sm mb-5">
-          Entrez le code à 6 chiffres partagé par votre ami ou votre prof.
+          Entrez le code à 6 caractères partagé par votre ami ou votre prof.
         </p>
         <div className="flex gap-2">
           <input
@@ -169,7 +175,7 @@ function PlayCards() {
             className="flex-1 h-12 px-4 bg-background border-2 border-border rounded-2xl font-mono font-bold tracking-widest uppercase outline-none focus:border-primary transition-colors"
           />
           <button
-            onClick={() => toast.info("Les rooms live arrivent bientôt")}
+            onClick={handleJoin}
             className="h-12 px-5 bg-foreground text-background rounded-2xl font-semibold text-sm btn-press"
           >
             Rejoindre

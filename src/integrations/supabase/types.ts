@@ -49,6 +49,61 @@ export type Database = {
           },
         ]
       }
+      player_answers: {
+        Row: {
+          answer_id: string | null
+          answered_at: string
+          id: string
+          is_correct: boolean
+          points_earned: number
+          question_id: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          answer_id?: string | null
+          answered_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          answer_id?: string | null
+          answered_at?: string
+          id?: string
+          is_correct?: boolean
+          points_earned?: number
+          question_id?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_answers_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_answers_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
