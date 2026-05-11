@@ -122,10 +122,14 @@ function AuthPage() {
 
             <div className="space-y-3 mb-6">
               <button className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-2xl font-semibold text-sm hover:border-primary btn-press">
+            <div className="space-y-3 mb-6">
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={loading}
+                className="w-full h-12 flex items-center justify-center gap-3 bg-card border border-border rounded-2xl font-semibold text-sm hover:border-primary btn-press disabled:opacity-50"
+              >
                 <GoogleIcon /> Continuer avec Google
-              </button>
-              <button className="w-full h-12 flex items-center justify-center gap-3 bg-foreground text-background rounded-2xl font-semibold text-sm btn-press">
-                <AppleIcon /> Continuer avec Apple
               </button>
             </div>
 
@@ -135,12 +139,16 @@ function AuthPage() {
               <div className="flex-1 h-px bg-border" />
             </div>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+            <form className="space-y-4" onSubmit={handleEmail}>
               {mode === "signup" && (
                 <Field label="Pseudo">
                   <input
                     type="text"
-                    placeholder="Lucas_99"
+                    required
+                    minLength={3}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="lucas_99"
                     className="w-full bg-transparent outline-none text-sm"
                   />
                 </Field>
@@ -148,6 +156,9 @@ function AuthPage() {
               <Field label="Email" icon={<Mail className="size-4" />}>
                 <input
                   type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="vous@email.com"
                   className="w-full bg-transparent outline-none text-sm"
                 />
@@ -155,26 +166,27 @@ function AuthPage() {
               <Field label="Mot de passe" icon={<Lock className="size-4" />}>
                 <input
                   type="password"
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className="w-full bg-transparent outline-none text-sm"
                 />
               </Field>
 
-              {mode === "signin" && (
-                <div className="flex justify-end -mt-2">
-                  <a href="#" className="text-xs text-primary hover:underline font-medium">
-                    Mot de passe oublié ?
-                  </a>
-                </div>
-              )}
-
-              <Link
-                to="/dashboard"
-                className="w-full h-12 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press mt-2"
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full h-12 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press mt-2 disabled:opacity-60"
               >
-                {mode === "signin" ? "Se connecter" : "Créer mon compte"}
-                <ArrowRight className="size-4" />
-              </Link>
+                {loading ? <Loader2 className="size-4 animate-spin" /> : (
+                  <>
+                    {mode === "signin" ? "Se connecter" : "Créer mon compte"}
+                    <ArrowRight className="size-4" />
+                  </>
+                )}
+              </button>
             </form>
 
             <p className="mt-8 text-sm text-center text-muted-foreground">
