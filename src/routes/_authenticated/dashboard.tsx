@@ -1,13 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Logo } from "@/components/Logo";
+import { AppSidebar } from "@/components/AppSidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  Home, Gamepad2, BookOpen, Users, Trophy, Target, ShoppingBag,
-  User, Settings, Bell, PlayCircle, KeyRound, Flame, Sparkles,
-  TrendingUp, Award, ChevronRight, LogOut, Loader2,
+  Users, Bell, PlayCircle, KeyRound, Flame, Sparkles,
+  TrendingUp, Award, ChevronRight, Loader2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -20,18 +20,6 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   }),
   component: Dashboard,
 });
-
-const navItems = [
-  { icon: Home, label: "Accueil", active: true },
-  { icon: Gamepad2, label: "Jouer" },
-  { icon: BookOpen, label: "Mes quiz" },
-  { icon: Users, label: "Amis" },
-  { icon: Trophy, label: "Tournois" },
-  { icon: Target, label: "Défis" },
-  { icon: ShoppingBag, label: "Boutique" },
-  { icon: User, label: "Profil" },
-  { icon: Settings, label: "Paramètres" },
-];
 
 function Dashboard() {
   const { profile, signOut } = useAuth();
