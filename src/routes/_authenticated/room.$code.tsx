@@ -154,7 +154,7 @@ function RoomPage() {
   if (room.status === "live") {
     return <LiveGame room={room} players={players} profiles={profiles} isHost={isHost} userId={user!.id} />;
   }
-  return <Results room={room} players={players} profiles={profiles} isHost={isHost} onReplay={() => navigate({ to: "/play" })} />;
+  return <Results room={room} players={players} profiles={profiles} isHost={isHost} />;
 }
 
 function FullScreenWrap({ children }: { children: React.ReactNode }) {
