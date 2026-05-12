@@ -589,7 +589,11 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 
       <div className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[1fr_280px] gap-6">
         <section>
-          <div className="p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6">
+          <div
+            className={`p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6 ${
+              shake === "soft" ? "animate-shake-soft" : shake === "tiny" ? "animate-shake-tiny" : ""
+            }`}
+          >
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">{question.text}</h2>
             {question.image_url && (
               <img
