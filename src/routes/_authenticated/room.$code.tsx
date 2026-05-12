@@ -2,12 +2,14 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
+  Share2, Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
@@ -20,7 +22,8 @@ type RoomRow = {
   code: string;
   host_id: string;
   quiz_id: string;
-  mode: string;
+  mode: "classic" | "survival" | "speedrun" | "team" | "speed" | "boss" | "race" | "treasure" | "arena" | "chaos" | "tournament";
+  settings: Record<string, unknown> | null;
   status: "lobby" | "live" | "finished" | "cancelled";
   current_question: number;
   question_started_at: string | null;
@@ -152,7 +155,7 @@ function RoomPage() {
   if (room.status === "live") {
     return <LiveGame room={room} players={players} profiles={profiles} isHost={isHost} userId={user!.id} />;
   }
-  return <Results room={room} players={players} profiles={profiles} isHost={isHost} onReplay={() => navigate({ to: "/play" })} />;
+  return <Results room={room} players={players} profiles={profiles} isHost={isHost} />;
 }
 
 function FullScreenWrap({ children }: { children: React.ReactNode }) {
@@ -164,18 +167,6 @@ function FullScreenWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatBlock({ label, value, accent }: { label: string; value: string; accent?: "success" | "warning" | "destructive" }) {
-  const tone =
-    accent === "success" ? "text-success" :
-    accent === "warning" ? "text-warning" :
-    accent === "destructive" ? "text-destructive" : "text-foreground";
-  return (
-    <div className="p-3 bg-background border border-border rounded-2xl">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`font-display font-bold text-lg mt-0.5 tabular-nums ${tone}`}>{value}</div>
-    </div>
-  );
-}
 
 /* ──────────── LOBBY ──────────── */
 
@@ -416,6 +407,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [showFeedback, setShowFeedback] = useState<{ correct: boolean; points: number } | null>(null);
+  const [shake, setShake] = useState<"none" | "soft" | "tiny">("none");
   const [now, setNow] = useState(Date.now());
   const advanceLockRef = useRef<number>(-1);
 
@@ -480,6 +472,9 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     }
     const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
     setShowFeedback({ correct: answer.is_correct, points: earned });
+    // Subtle screen shake — soft for wrong, tiny for right (educational, not aggressive)
+    setShake(answer.is_correct ? "tiny" : "soft");
+    setTimeout(() => setShake("none"), 420);
 
     // Insert player_answers + bump room_players.score
     const { error: paErr } = await supabase.from("player_answers").insert({
@@ -583,7 +578,11 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 
       <div className="max-w-6xl mx-auto px-6 py-8 grid lg:grid-cols-[1fr_280px] gap-6">
         <section>
-          <div className="p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6">
+          <div
+            className={`p-8 lg:p-10 bg-card border border-border/60 rounded-3xl shadow-soft text-center mb-6 ${
+              shake === "soft" ? "animate-shake-soft" : shake === "tiny" ? "animate-shake-tiny" : ""
+            }`}
+          >
             <h2 className="font-display text-2xl md:text-3xl font-bold leading-snug">{question.text}</h2>
             {question.image_url && (
               <img
@@ -701,17 +700,22 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 
 /* ──────────── RESULTS ──────────── */
 
-function Results({ room, players, profiles, isHost, onReplay }: {
-  room: RoomRow; players: PlayerRow[]; profiles: Map<string, ProfileLite>; isHost: boolean; onReplay: () => void;
+function Results({ room, players, profiles, isHost }: {
+  room: RoomRow; players: PlayerRow[]; profiles: Map<string, ProfileLite>; isHost: boolean;
 }) {
   const { user, profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const xpClaimedRef = useRef(false);
+  const pbCheckedRef = useRef(false);
+  const [isPersonalBest, setIsPersonalBest] = useState(false);
+  const [previousBest, setPreviousBest] = useState<number | null>(null);
+  const [replaying, setReplaying] = useState(false);
 
   const sorted = useMemo(() => [...players].sort((a, b) => b.score - a.score), [players]);
   const myRank = sorted.findIndex((p) => p.user_id === user?.id);
   const me = sorted[myRank];
 
-  // Pull all player_answers for this room to compute mode-specific stats
+  // Pull all player_answers for this room for mode-specific stats
   const { data: paStats } = useQuery({
     queryKey: ["room-pa-stats", room.id],
     queryFn: async () => {
@@ -735,7 +739,59 @@ function Results({ room, players, profiles, isHost, onReplay }: {
     return map;
   }, [paStats]);
 
-  // Claim XP once: 10 XP per point earned (capped) — simple economy
+  /**
+   * Check personal best on this quiz.
+   * If beaten → fire confetti (educational palette: blue / green / amber)
+   * and persist the new record.
+   */
+  useEffect(() => {
+    if (!user || !me || pbCheckedRef.current) return;
+    pbCheckedRef.current = true;
+
+    (async () => {
+      const { data: existing } = await supabase
+        .from("personal_bests")
+        .select("best_score")
+        .eq("user_id", user.id)
+        .eq("quiz_id", room.quiz_id)
+        .maybeSingle();
+
+      const prevBest = existing?.best_score ?? 0;
+      setPreviousBest(prevBest);
+      const isNewBest = me.score > prevBest;
+
+      if (isNewBest && me.score > 0) {
+        setIsPersonalBest(true);
+        // Confetti — soft educational tones, no aggressive colors
+        const fire = (particleRatio: number, opts: confetti.Options) => {
+          confetti({
+            origin: { y: 0.65 },
+            spread: 70,
+            startVelocity: 30,
+            colors: ["#3B82F6", "#22C55E", "#F59E0B"],
+            ticks: 80,
+            ...opts,
+            particleCount: Math.floor(180 * particleRatio),
+          });
+        };
+        fire(0.25, { spread: 26, startVelocity: 55 });
+        fire(0.2, { spread: 60 });
+        fire(0.35, { spread: 100, decay: 0.91, scalar: 0.9 });
+
+        // Upsert new record
+        if (existing) {
+          await supabase.from("personal_bests")
+            .update({ best_score: me.score, best_mode: room.mode, achieved_at: new Date().toISOString() })
+            .eq("user_id", user.id).eq("quiz_id", room.quiz_id);
+        } else {
+          await supabase.from("personal_bests")
+            .insert({ user_id: user.id, quiz_id: room.quiz_id, best_score: me.score, best_mode: room.mode });
+        }
+      }
+    })();
+  }, [user, me, room.quiz_id, room.mode]);
+
+  // Claim XP once: 10 XP per point earned (capped)
   useEffect(() => {
     if (!user || !profile || !me || xpClaimedRef.current) return;
     xpClaimedRef.current = true;
@@ -753,6 +809,47 @@ function Results({ room, players, profiles, isHost, onReplay }: {
       refreshProfile();
     })();
   }, [user, profile, me, refreshProfile]);
+
+  /** Instant Replay — recreate a room with the same quiz + mode and join as host. */
+  const handleReplay = async () => {
+    if (!user || replaying) return;
+    setReplaying(true);
+    try {
+      const { data: newRoom, error } = await supabase
+        .from("rooms")
+        .insert({
+          host_id: user.id,
+          quiz_id: room.quiz_id,
+          mode: room.mode,
+          settings: (room.settings ?? {}) as never,
+        })
+        .select("id, code")
+        .single();
+      if (error) throw error;
+      await supabase.from("room_players")
+        .insert({ room_id: newRoom.id, user_id: user.id, is_ready: true });
+      // Use replace so the back button doesn't go to the finished room
+      navigate({ to: "/room/$code", params: { code: newRoom.code }, replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erreur");
+      setReplaying(false);
+    }
+  };
+
+  /** Share score: copy a stylized text + link to clipboard, fall back to native share if available. */
+  const handleShare = async () => {
+    if (!me) return;
+    const url = `${window.location.origin}/join?code=${room.code}`;
+    const text = `J'ai marqué ${me.score} pts sur ClassRush (mode ${room.mode}) — rang #${myRank + 1}/${players.length} 🎓\nRejoins-moi : ${url}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Mon score ClassRush", text, url });
+        return;
+      }
+    } catch { /* user cancelled */ }
+    await navigator.clipboard.writeText(text);
+    toast.success("Score copié dans le presse-papiers");
+  };
 
   const topThree = sorted.slice(0, 3);
   const podiumOrder = [topThree[1], topThree[0], topThree[2]].filter(Boolean);
@@ -783,6 +880,20 @@ function Results({ room, players, profiles, isHost, onReplay }: {
           </span>
           <h1 className="mt-4 font-display text-4xl md:text-5xl font-bold">Résultats finaux</h1>
         </div>
+
+        {/* Personal best banner — discreet, educational */}
+        {isPersonalBest && me && (
+          <section className="p-5 bg-gradient-to-r from-success/10 via-warning/10 to-primary/10 border-2 border-success/30 rounded-3xl text-center animate-fade-up">
+            <div className="inline-flex items-center gap-2 text-success font-display font-bold text-lg">
+              <Sparkles className="size-5" /> Nouveau record personnel !
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {previousBest !== null && previousBest > 0
+                ? <>Tu passes de <strong>{previousBest}</strong> à <strong>{me.score}</strong> pts sur ce quiz.</>
+                : <>Premier record sur ce quiz : <strong>{me.score}</strong> pts.</>}
+            </p>
+          </section>
+        )}
 
         {/* Podium */}
         {podiumOrder.length > 0 && (
@@ -894,12 +1005,26 @@ function Results({ room, players, profiles, isHost, onReplay }: {
         </section>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
           {isHost && (
-            <button onClick={onReplay} className="h-12 px-6 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press">
-              <RotateCcw className="size-4" /> Rejouer
+            <button
+              onClick={handleReplay}
+              disabled={replaying}
+              className="h-12 px-6 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press disabled:opacity-60"
+            >
+              {replaying ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
+              Rejouer
             </button>
           )}
+          <button
+            onClick={handleShare}
+            className="h-12 px-6 inline-flex items-center justify-center gap-2 bg-card border border-border rounded-2xl font-semibold btn-press hover:border-primary"
+          >
+            <Share2 className="size-4" /> Partager mon score
+          </button>
+          <Link to="/leaderboard" className="h-12 px-6 inline-flex items-center justify-center gap-2 bg-card border border-border rounded-2xl font-semibold btn-press">
+            <Trophy className="size-4" /> Classement global
+          </Link>
           <Link to="/play" className="h-12 px-6 inline-flex items-center justify-center gap-2 bg-card border border-border rounded-2xl font-semibold btn-press">
             <PlayCircle className="size-4" /> Autre quiz
           </Link>
@@ -908,6 +1033,19 @@ function Results({ room, players, profiles, isHost, onReplay }: {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatBlock({ label, value, accent }: { label: string; value: string; accent?: "success" | "warning" | "destructive" }) {
+  const tone =
+    accent === "success" ? "text-success" :
+    accent === "warning" ? "text-warning" :
+    accent === "destructive" ? "text-destructive" : "text-foreground";
+  return (
+    <div className="p-3 bg-background border border-border rounded-2xl">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`font-display font-bold text-lg mt-0.5 tabular-nums ${tone}`}>{value}</div>
     </div>
   );
 }

@@ -76,6 +76,33 @@ export type Database = {
         }
         Relationships: []
       }
+      personal_bests: {
+        Row: {
+          achieved_at: string
+          best_mode: string | null
+          best_score: number
+          id: string
+          quiz_id: string
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          best_mode?: string | null
+          best_score?: number
+          id?: string
+          quiz_id: string
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          best_mode?: string | null
+          best_score?: number
+          id?: string
+          quiz_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_answers: {
         Row: {
           answer_id: string | null

@@ -17,6 +17,7 @@ import { Route as AuthenticatedShopRouteImport } from './routes/_authenticated/s
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedPlayRouteImport } from './routes/_authenticated/play'
+import { Route as AuthenticatedLeaderboardRouteImport } from './routes/_authenticated/leaderboard'
 import { Route as AuthenticatedJoinRouteImport } from './routes/_authenticated/join'
 import { Route as AuthenticatedFriendsRouteImport } from './routes/_authenticated/friends'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -65,6 +66,12 @@ const AuthenticatedPlayRoute = AuthenticatedPlayRouteImport.update({
   path: '/play',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedLeaderboardRoute =
+  AuthenticatedLeaderboardRouteImport.update({
+    id: '/leaderboard',
+    path: '/leaderboard',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedJoinRoute = AuthenticatedJoinRouteImport.update({
   id: '/join',
   path: '/join',
@@ -110,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/friends': typeof AuthenticatedFriendsRoute
   '/join': typeof AuthenticatedJoinRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/play': typeof AuthenticatedPlayRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/friends': typeof AuthenticatedFriendsRoute
   '/join': typeof AuthenticatedJoinRoute
+  '/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/play': typeof AuthenticatedPlayRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -144,6 +153,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/friends': typeof AuthenticatedFriendsRoute
   '/_authenticated/join': typeof AuthenticatedJoinRoute
+  '/_authenticated/leaderboard': typeof AuthenticatedLeaderboardRoute
   '/_authenticated/play': typeof AuthenticatedPlayRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/friends'
     | '/join'
+    | '/leaderboard'
     | '/play'
     | '/profile'
     | '/settings'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/friends'
     | '/join'
+    | '/leaderboard'
     | '/play'
     | '/profile'
     | '/settings'
@@ -195,6 +207,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/friends'
     | '/_authenticated/join'
+    | '/_authenticated/leaderboard'
     | '/_authenticated/play'
     | '/_authenticated/profile'
     | '/_authenticated/settings'
@@ -269,6 +282,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPlayRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/leaderboard': {
+      id: '/_authenticated/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof AuthenticatedLeaderboardRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/join': {
       id: '/_authenticated/join'
       path: '/join'
@@ -326,6 +346,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFriendsRoute: typeof AuthenticatedFriendsRoute
   AuthenticatedJoinRoute: typeof AuthenticatedJoinRoute
+  AuthenticatedLeaderboardRoute: typeof AuthenticatedLeaderboardRoute
   AuthenticatedPlayRoute: typeof AuthenticatedPlayRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -341,6 +362,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFriendsRoute: AuthenticatedFriendsRoute,
   AuthenticatedJoinRoute: AuthenticatedJoinRoute,
+  AuthenticatedLeaderboardRoute: AuthenticatedLeaderboardRoute,
   AuthenticatedPlayRoute: AuthenticatedPlayRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
@@ -363,13 +385,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
