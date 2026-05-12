@@ -56,6 +56,8 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-fade-up: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  --animate-shake-soft: shake-soft 0.4s cubic-bezier(.36,.07,.19,.97) both;
+  --animate-shake-tiny: shake-tiny 0.25s ease-out both;
 
   @keyframes float {
     0%, 100% { transform: translateY(0); }
@@ -68,6 +70,17 @@
   @keyframes pulse-soft {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.6; }
+  }
+  /* Subtle screen shake — educational, never aggressive */
+  @keyframes shake-soft {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-3px, 0, 0); }
+    40%, 60% { transform: translate3d(3px, 0, 0); }
+  }
+  @keyframes shake-tiny {
+    25% { transform: translate3d(-2px, 0, 0); }
+    75% { transform: translate3d(2px, 0, 0); }
   }
 }
 
