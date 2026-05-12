@@ -2,12 +2,14 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
+  Share2, Sparkles,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/room/$code")({
