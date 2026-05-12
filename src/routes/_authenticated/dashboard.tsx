@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Users, Bell, PlayCircle, KeyRound, Flame, Sparkles,
-  TrendingUp, Award, ChevronRight, Loader2,
+  TrendingUp, Award, ChevronRight, Loader2, Gamepad2, Target, CheckCircle2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function Dashboard() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
 
   const { data: popularQuizzes } = useQuery({
     queryKey: ["popular-quizzes"],
@@ -38,6 +38,28 @@ function Dashboard() {
     },
   });
 
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats", user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const [played, answers, quizzes, friends] = await Promise.all([
+        supabase.from("room_players").select("id", { count: "exact", head: true }).eq("user_id", user!.id),
+        supabase.from("player_answers").select("is_correct").eq("user_id", user!.id),
+        supabase.from("quizzes").select("id", { count: "exact", head: true }).eq("creator_id", user!.id),
+        supabase.from("friendships").select("id", { count: "exact", head: true })
+          .or(`requester_id.eq.${user!.id},addressee_id.eq.${user!.id}`).eq("status", "accepted"),
+      ]);
+      const total = answers.data?.length ?? 0;
+      const correct = answers.data?.filter((a) => a.is_correct).length ?? 0;
+      return {
+        gamesPlayed: played.count ?? 0,
+        accuracy: total ? Math.round((correct / total) * 100) : 0,
+        quizzesCreated: quizzes.count ?? 0,
+        friendsCount: friends.count ?? 0,
+      };
+    },
+  });
+
   const initial = (profile?.display_name || profile?.username || "?")[0].toUpperCase();
   const displayName = profile?.display_name || profile?.username || "Joueur";
 
@@ -49,6 +71,7 @@ function Dashboard() {
         <TopBar coins={profile?.coins ?? 0} initial={initial} />
         <div className="p-6 lg:p-10 max-w-6xl mx-auto space-y-8">
           <Greeting name={displayName} level={profile?.level ?? 1} xp={profile?.xp ?? 0} />
+          <StatsRow stats={stats} />
           <PlayCards />
           <div className="grid lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
@@ -61,6 +84,30 @@ function Dashboard() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function StatsRow({ stats }: { stats: { gamesPlayed: number; accuracy: number; quizzesCreated: number; friendsCount: number } | undefined }) {
+  const items = [
+    { icon: Gamepad2, label: "Parties jouées", value: stats?.gamesPlayed ?? 0, color: "text-primary bg-primary/10" },
+    { icon: Target, label: "Précision", value: `${stats?.accuracy ?? 0}%`, color: "text-success bg-success/10" },
+    { icon: CheckCircle2, label: "Quiz créés", value: stats?.quizzesCreated ?? 0, color: "text-warning bg-warning/10" },
+    { icon: Users, label: "Amis", value: stats?.friendsCount ?? 0, color: "text-destructive bg-destructive/10" },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {items.map((it) => (
+        <div key={it.label} className="p-4 bg-card border border-border/60 rounded-2xl shadow-soft flex items-center gap-3">
+          <div className={`size-10 rounded-xl grid place-items-center ${it.color}`}>
+            <it.icon className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs text-muted-foreground truncate">{it.label}</div>
+            <div className="font-display font-bold text-lg tabular-nums">{it.value}</div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -134,7 +181,7 @@ function PlayCards() {
   const handleJoin = () => {
     const c = code.trim().toUpperCase();
     if (c.length !== 6) { toast.error("Code à 6 caractères requis"); return; }
-    navigate({ to: "/join" });
+    navigate({ to: "/join", search: { code: c } });
   };
   return (
     <div className="grid md:grid-cols-2 gap-5">

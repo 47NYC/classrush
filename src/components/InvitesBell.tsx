@@ -58,6 +58,25 @@ export function InvitesBell() {
   }, [user?.id]);
 
   const accept = async (inv: Invite) => {
+    if (!user) return;
+    // Auto-leave any other active room (lobby) before joining the new one
+    const { data: otherLobbies } = await supabase
+      .from("room_players")
+      .select("room_id, rooms!inner(id, status, host_id)")
+      .eq("user_id", user.id);
+    const toLeave = (otherLobbies ?? []).filter((rp: { room_id: string; rooms: { id: string; status: string; host_id: string } }) =>
+      rp.room_id !== inv.room_id && (rp.rooms.status === "lobby" || rp.rooms.status === "live")
+    );
+    for (const rp of toLeave) {
+      const r = (rp as { rooms: { id: string; status: string; host_id: string } }).rooms;
+      if (r.host_id === user.id) {
+        await supabase.from("rooms").update({ status: "cancelled" }).eq("id", r.id);
+      } else {
+        await supabase.from("room_players").delete().eq("room_id", r.id).eq("user_id", user.id);
+      }
+    }
+    if (toLeave.length) toast.info("Tu as quitté ta partie en cours");
+
     await supabase.from("room_invites").update({ status: "accepted" }).eq("id", inv.id);
     setOpen(false);
     navigate({ to: "/room/$code", params: { code: inv.room_code } });

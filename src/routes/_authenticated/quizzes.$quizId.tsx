@@ -178,43 +178,82 @@ function QuizEditor() {
     toast.success("Image ajoutée");
   };
 
-  // CSV import
-  // Format: text, time_limit, points, answer1, answer2, answer3, answer4, correct (1-4)
+  // CSV import — strict validation + clear feedback
+  // Required columns: text (or question), answer1..answer4 (or a1..a4), correct (1-4)
+  // Optional: time_limit (or time), points
   const handleCsvImport = (file: File) => {
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      toast.error("Le fichier doit être un .csv");
+      return;
+    }
     Papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
+      transformHeader: (h) => h.trim().toLowerCase(),
       complete: (results) => {
+        if (results.errors.length) {
+          toast.error(`CSV invalide : ${results.errors[0].message}`);
+          return;
+        }
+        const headers = results.meta.fields ?? [];
+        const hasText = headers.includes("text") || headers.includes("question");
+        const hasA1 = headers.includes("answer1") || headers.includes("a1");
+        const hasCorrect = headers.includes("correct");
+        if (!hasText || !hasA1 || !hasCorrect) {
+          toast.error("Colonnes manquantes. Requises : text (ou question), answer1..4 (ou a1..a4), correct");
+          return;
+        }
+
         const imported: QuestionRow[] = [];
+        const errors: string[] = [];
         let pos = questions.length;
-        for (const row of results.data) {
+
+        results.data.forEach((row, idx) => {
+          const lineNo = idx + 2; // +1 header, +1 1-based
           const text = (row.text || row.question || "").trim();
-          if (!text) continue;
-          const correctIdx = Math.max(1, Math.min(4, parseInt(row.correct || "1", 10))) - 1;
+          if (!text) { errors.push(`Ligne ${lineNo} : énoncé vide`); return; }
+
           const ans = [1, 2, 3, 4].map((i) => (row[`answer${i}`] || row[`a${i}`] || "").trim());
+          const filled = ans.filter(Boolean).length;
+          if (filled < 2) { errors.push(`Ligne ${lineNo} : au moins 2 réponses requises`); return; }
+
+          const correctRaw = parseInt((row.correct ?? "").trim(), 10);
+          if (!Number.isFinite(correctRaw) || correctRaw < 1 || correctRaw > 4) {
+            errors.push(`Ligne ${lineNo} : correct doit être 1..4`); return;
+          }
+          const correctIdx = correctRaw - 1;
+          if (!ans[correctIdx]) { errors.push(`Ligne ${lineNo} : la bonne réponse est vide`); return; }
+
+          const tl = parseInt(row.time_limit || row.time || "20", 10);
+          const pts = parseInt(row.points || "100", 10);
+
           imported.push({
             id: `new-${crypto.randomUUID()}`,
             quiz_id: quizId,
             position: pos++,
             text,
             image_url: null,
-            time_limit: parseInt(row.time_limit || row.time || "20", 10) || 20,
-            points: parseInt(row.points || "100", 10) || 100,
+            time_limit: Math.min(120, Math.max(5, Number.isFinite(tl) ? tl : 20)),
+            points: Math.min(2000, Math.max(10, Number.isFinite(pts) ? pts : 100)),
             answers: ans.map((t, i) => ({
               id: `new-${crypto.randomUUID()}`, question_id: "", position: i,
               text: t, is_correct: i === correctIdx,
             })),
           });
+        });
+
+        if (errors.length) {
+          toast.error(`${errors.length} ligne(s) ignorée(s) : ${errors.slice(0, 2).join(" • ")}${errors.length > 2 ? "…" : ""}`);
         }
         if (!imported.length) {
-          toast.error("Aucune question trouvée dans le CSV");
+          toast.error("Aucune question valide à importer");
           return;
         }
         setQuestions((qs) => [...qs, ...imported]);
         setDirty(true);
-        toast.success(`${imported.length} question${imported.length > 1 ? "s" : ""} importée${imported.length > 1 ? "s" : ""}`);
+        toast.success(`${imported.length} question${imported.length > 1 ? "s" : ""} importée${imported.length > 1 ? "s" : ""} — n'oublie pas d'enregistrer`);
       },
-      error: (err) => toast.error(err.message),
+      error: (err) => toast.error(`Erreur de lecture : ${err.message}`),
     });
   };
 

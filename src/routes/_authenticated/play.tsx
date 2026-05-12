@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { PageShell, PageHeader } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { PlayCircle, Loader2, BookOpen, Search, Zap, Skull, Trophy } from "lucide-react";
+import { PlayCircle, Loader2, BookOpen, Search, Zap, Skull, Trophy, Users, Crown, Map, Swords, Shuffle, Flag, Gem } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/play")({
   head: () => ({ meta: [{ title: "Jouer — ClassRush" }] }),
@@ -17,12 +17,20 @@ type PlayQuiz = {
   plays_count: number; question_count: number;
 };
 
-type GameMode = "classic" | "survival" | "speedrun";
+type GameMode = "classic" | "survival" | "speedrun" | "team" | "speed" | "boss" | "race" | "treasure" | "arena" | "chaos" | "tournament";
 
 const MODES: { value: GameMode; label: string; description: string; icon: typeof PlayCircle; accent: string }[] = [
   { value: "classic", label: "Classic", description: "Score basé sur la vitesse et la précision.", icon: Trophy, accent: "text-primary bg-primary/10 border-primary" },
   { value: "survival", label: "Survival", description: "Une mauvaise réponse et tu es éliminé !", icon: Skull, accent: "text-destructive bg-destructive/10 border-destructive" },
   { value: "speedrun", label: "Speedrun", description: "Bonus de vitesse maximal sur chaque question.", icon: Zap, accent: "text-warning bg-warning/10 border-warning" },
+  { value: "team", label: "Team Battle", description: "2 équipes s'affrontent, score cumulé.", icon: Users, accent: "text-primary bg-primary/10 border-primary" },
+  { value: "speed", label: "Speed Run", description: "Variante chrono : qui finit en premier ?", icon: Flag, accent: "text-warning bg-warning/10 border-warning" },
+  { value: "boss", label: "Boss Fight", description: "Affronte un boss à plusieurs PV.", icon: Crown, accent: "text-destructive bg-destructive/10 border-destructive" },
+  { value: "race", label: "Race", description: "Course de pions sur un plateau.", icon: Map, accent: "text-success bg-success/10 border-success" },
+  { value: "treasure", label: "Treasure Hunt", description: "Trouve l'indice caché à chaque manche.", icon: Gem, accent: "text-warning bg-warning/10 border-warning" },
+  { value: "arena", label: "Arena", description: "Duels 1v1 en élimination directe.", icon: Swords, accent: "text-primary bg-primary/10 border-primary" },
+  { value: "chaos", label: "Chaos", description: "Règles imprévisibles à chaque question.", icon: Shuffle, accent: "text-destructive bg-destructive/10 border-destructive" },
+  { value: "tournament", label: "Tournoi", description: "Format à élimination, plusieurs rounds.", icon: Trophy, accent: "text-success bg-success/10 border-success" },
 ];
 
 function PlayPage() {
@@ -95,7 +103,7 @@ function PlayPage() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Mode de jeu</p>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {MODES.map((m) => {
               const active = mode === m.value;
               const Icon = m.icon;
