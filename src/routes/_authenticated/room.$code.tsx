@@ -821,7 +821,7 @@ function Results({ room, players, profiles, isHost }: {
           host_id: user.id,
           quiz_id: room.quiz_id,
           mode: room.mode,
-          settings: room.settings ?? {},
+          settings: (room.settings ?? {}) as never,
         })
         .select("id, code")
         .single();

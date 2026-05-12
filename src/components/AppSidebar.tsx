@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 
 type NavItem = {
-  to: "/dashboard" | "/play" | "/quizzes" | "/friends" | "/tournaments" | "/challenges" | "/shop" | "/profile" | "/settings";
+  to: "/dashboard" | "/play" | "/quizzes" | "/friends" | "/tournaments" | "/leaderboard" | "/challenges" | "/shop" | "/profile" | "/settings";
   icon: typeof Home;
   label: string;
 };
@@ -19,6 +19,7 @@ const items: NavItem[] = [
   { to: "/play", icon: Gamepad2, label: "Jouer" },
   { to: "/quizzes", icon: BookOpen, label: "Mes quiz" },
   { to: "/friends", icon: Users, label: "Amis" },
+  { to: "/leaderboard", icon: Trophy, label: "Classement" },
   { to: "/tournaments", icon: Trophy, label: "Tournois" },
   { to: "/challenges", icon: Target, label: "Défis" },
   { to: "/shop", icon: ShoppingBag, label: "Boutique" },
