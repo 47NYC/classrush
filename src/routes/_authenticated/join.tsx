@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,14 +8,31 @@ import { KeyRound, Loader2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/join")({
   head: () => ({ meta: [{ title: "Rejoindre une partie — ClassRush" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    code: typeof s.code === "string" ? s.code.toUpperCase().slice(0, 6) : undefined,
+  }),
   component: JoinPage,
 });
 
 function JoinPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [code, setCode] = useState("");
+  const search = Route.useSearch();
+  const [code, setCode] = useState(search.code ?? "");
   const [loading, setLoading] = useState(false);
+
+  // Auto-submit if code arrives via URL
+  useEffect(() => {
+    if (search.code && search.code.length === 6 && !loading) {
+      // Defer to allow render
+      const t = setTimeout(() => {
+        const form = document.getElementById("join-form") as HTMLFormElement | null;
+        form?.requestSubmit();
+      }, 50);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.code]);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +95,7 @@ function JoinPage() {
           <p className="text-sm text-muted-foreground">Entrez le code à 6 caractères partagé par l'hôte.</p>
         </div>
 
-        <form onSubmit={handleJoin} className="p-6 bg-card border border-border/60 rounded-3xl shadow-soft space-y-4">
+        <form id="join-form" onSubmit={handleJoin} className="p-6 bg-card border border-border/60 rounded-3xl shadow-soft space-y-4">
           <input
             type="text"
             value={code}
