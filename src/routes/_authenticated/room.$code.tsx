@@ -418,6 +418,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [hasAnswered, setHasAnswered] = useState(false);
   const [showFeedback, setShowFeedback] = useState<{ correct: boolean; points: number } | null>(null);
+  const [shake, setShake] = useState<"none" | "soft" | "tiny">("none");
   const [now, setNow] = useState(Date.now());
   const advanceLockRef = useRef<number>(-1);
 
@@ -482,6 +483,9 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     }
     const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
     setShowFeedback({ correct: answer.is_correct, points: earned });
+    // Subtle screen shake — soft for wrong, tiny for right (educational, not aggressive)
+    setShake(answer.is_correct ? "tiny" : "soft");
+    setTimeout(() => setShake("none"), 420);
 
     // Insert player_answers + bump room_players.score
     const { error: paErr } = await supabase.from("player_answers").insert({
