@@ -22,7 +22,8 @@ type RoomRow = {
   code: string;
   host_id: string;
   quiz_id: string;
-  mode: string;
+  mode: "classic" | "survival" | "speedrun" | "team" | "speed" | "boss" | "race" | "treasure" | "arena" | "chaos" | "tournament";
+  settings: Record<string, unknown> | null;
   status: "lobby" | "live" | "finished" | "cancelled";
   current_question: number;
   question_started_at: string | null;
@@ -166,18 +167,6 @@ function FullScreenWrap({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StatBlock({ label, value, accent }: { label: string; value: string; accent?: "success" | "warning" | "destructive" }) {
-  const tone =
-    accent === "success" ? "text-success" :
-    accent === "warning" ? "text-warning" :
-    accent === "destructive" ? "text-destructive" : "text-foreground";
-  return (
-    <div className="p-3 bg-background border border-border rounded-2xl">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`font-display font-bold text-lg mt-0.5 tabular-nums ${tone}`}>{value}</div>
-    </div>
-  );
-}
 
 /* ──────────── LOBBY ──────────── */
 
