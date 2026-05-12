@@ -698,6 +698,30 @@ function Results({ room, players, profiles, isHost, onReplay }: {
   const myRank = sorted.findIndex((p) => p.user_id === user?.id);
   const me = sorted[myRank];
 
+  // Pull all player_answers for this room to compute mode-specific stats
+  const { data: paStats } = useQuery({
+    queryKey: ["room-pa-stats", room.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("player_answers")
+        .select("user_id, is_correct, points_earned")
+        .eq("room_id", room.id);
+      return data ?? [];
+    },
+  });
+
+  const perPlayer = useMemo(() => {
+    const map = new Map<string, { correct: number; total: number; bonus: number }>();
+    (paStats ?? []).forEach((a) => {
+      const r = map.get(a.user_id) ?? { correct: 0, total: 0, bonus: 0 };
+      r.total += 1;
+      if (a.is_correct) r.correct += 1;
+      r.bonus += a.points_earned;
+      map.set(a.user_id, r);
+    });
+    return map;
+  }, [paStats]);
+
   // Claim XP once: 10 XP per point earned (capped) — simple economy
   useEffect(() => {
     if (!user || !profile || !me || xpClaimedRef.current) return;
@@ -722,6 +746,11 @@ function Results({ room, players, profiles, isHost, onReplay }: {
   const podiumHeights = [120, 160, 96];
   const podiumColors = ["bg-muted-foreground/40", "bg-warning", "bg-warning/60"];
   const medalEmoji = ["🥈", "🥇", "🥉"];
+
+  const eliminatedCount = players.filter((p) => p.is_eliminated).length;
+  const survivorCount = players.length - eliminatedCount;
+  const myStats = me ? perPlayer.get(me.user_id) : undefined;
+  const accuracy = myStats && myStats.total ? Math.round((myStats.correct / myStats.total) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -790,6 +819,33 @@ function Results({ room, players, profiles, isHost, onReplay }: {
           </section>
         )}
 
+        {/* Mode-specific stats */}
+        {me && (
+          <section className="p-6 bg-card border border-border/60 rounded-3xl">
+            <h2 className="font-display font-bold mb-4 flex items-center gap-2">
+              <Award className="size-5 text-primary" />
+              Statistiques — Mode <span className="capitalize text-primary">{room.mode}</span>
+            </h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatBlock label="Bonnes réponses" value={`${myStats?.correct ?? 0}/${myStats?.total ?? 0}`} />
+              <StatBlock label="Précision" value={`${accuracy}%`} accent={accuracy >= 70 ? "success" : accuracy >= 40 ? "warning" : "destructive"} />
+              {room.mode === "speedrun" && (
+                <StatBlock label="Bonus vitesse" value={`+${Math.max(0, (myStats?.bonus ?? 0) - (myStats?.correct ?? 0) * 100)} pts`} accent="warning" />
+              )}
+              {room.mode === "survival" && (
+                <>
+                  <StatBlock label="Statut" value={me.is_eliminated ? "💀 Éliminé" : "🛡️ Survivant"} accent={me.is_eliminated ? "destructive" : "success"} />
+                  <StatBlock label="Survivants" value={`${survivorCount}/${players.length}`} />
+                </>
+              )}
+              {room.mode !== "speedrun" && room.mode !== "survival" && (
+                <StatBlock label="Points moyens" value={String(Math.round((myStats?.bonus ?? 0) / Math.max(1, myStats?.total ?? 1)))} />
+              )}
+              <StatBlock label="Joueurs" value={String(players.length)} />
+            </div>
+          </section>
+        )}
+
         {/* Full leaderboard */}
         <section className="p-6 bg-card border border-border/60 rounded-3xl">
           <h2 className="font-display font-bold mb-4 flex items-center gap-2">
@@ -800,6 +856,8 @@ function Results({ room, players, profiles, isHost, onReplay }: {
               const prof = profiles.get(p.user_id);
               const name = prof?.display_name || prof?.username || "Joueur";
               const isMe = p.user_id === user?.id;
+              const ps = perPlayer.get(p.user_id);
+              const acc = ps && ps.total ? Math.round((ps.correct / ps.total) * 100) : 0;
               return (
                 <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl ${
                   isMe ? "bg-primary/10 border border-primary/20" : "bg-background"
@@ -808,7 +866,13 @@ function Results({ room, players, profiles, isHost, onReplay }: {
                   <div className="size-9 rounded-full bg-primary/15 text-primary grid place-items-center font-bold text-sm">
                     {name[0].toUpperCase()}
                   </div>
-                  <span className="font-semibold flex-1 truncate">{name} {isMe && <span className="text-xs text-primary">(toi)</span>}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{name} {isMe && <span className="text-xs text-primary">(toi)</span>}</div>
+                    <div className="text-xs text-muted-foreground tabular-nums">
+                      {ps?.correct ?? 0}/{ps?.total ?? 0} bonnes · {acc}%
+                      {room.mode === "survival" && p.is_eliminated && " · 💀"}
+                    </div>
+                  </div>
                   <span className="font-display font-bold tabular-nums">{p.score} pts</span>
                 </div>
               );
