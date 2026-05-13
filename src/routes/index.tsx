@@ -38,6 +38,32 @@ function LandingPage() {
   );
 }
 
+function HeroJoinForm() {
+  const [code, setCode] = useState("");
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const c = code.trim().toUpperCase();
+        if (c.length === 6) window.location.assign(`/guest?code=${c}`);
+      }}
+      className="flex items-center bg-card p-1.5 rounded-2xl border-2 border-border focus-within:border-primary transition-all shadow-soft"
+    >
+      <input
+        type="text"
+        value={code}
+        onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+        placeholder="CODE À 6 CHIFFRES"
+        maxLength={6}
+        className="bg-transparent px-4 py-2 font-mono font-bold text-base w-44 uppercase outline-none placeholder:text-muted-foreground/50 tracking-widest"
+      />
+      <button type="submit" className="px-5 h-11 bg-foreground text-background rounded-xl font-semibold text-sm btn-press">
+        Rejoindre
+      </button>
+    </form>
+  );
+}
+
 function Hero() {
   return (
     <section className="relative overflow-hidden">
