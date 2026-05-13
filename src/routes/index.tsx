@@ -127,7 +127,7 @@ function Features() {
       <div className="text-center max-w-2xl mx-auto mb-16">
         <span className="text-sm font-bold tracking-widest uppercase text-primary">Fonctionnalités</span>
         <h2 className="mt-3 text-4xl md:text-5xl font-bold">
-          Tout ce qu'il faut pour rendre l'école addictive
+          Tout ce qu'il faut pour rendre l'école motivante
         </h2>
         <p className="mt-4 text-muted-foreground text-lg">
           Une plateforme moderne pensée pour l'apprentissage social, pour les élèves comme pour les enseignants.
