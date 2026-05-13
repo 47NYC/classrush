@@ -602,6 +602,18 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
                 className="mt-5 mx-auto rounded-2xl max-h-64 object-contain"
               />
             )}
+            {hasAnswered && (() => {
+              const picked = question.answers.find((a) => a.id === selectedAnswer);
+              const correct = !!picked?.is_correct;
+              return (
+                <div className="mt-5 flex items-center justify-center gap-3 animate-fade-up">
+                  <Mascot mood={correct ? "happy" : "surprised"} className="h-16 w-auto" />
+                  <span className={`font-display font-bold ${correct ? "text-success" : "text-destructive"}`}>
+                    {correct ? "Bien joué !" : "Aïe, raté !"}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
           {players.find((p) => p.user_id === userId)?.is_eliminated && (
             <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-2xl text-center font-display font-bold">
