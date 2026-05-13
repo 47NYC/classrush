@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { PageShell } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
-import { KeyRound, Loader2, ArrowRight } from "lucide-react";
+import { KeyRound, Loader2, ArrowRight, UserCircle2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/join")({
   head: () => ({ meta: [{ title: "Rejoindre une partie — ClassRush" }] }),
