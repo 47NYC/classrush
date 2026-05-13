@@ -892,17 +892,20 @@ function Results({ room, players, profiles, isHost }: {
           <h1 className="mt-4 font-display text-4xl md:text-5xl font-bold">Résultats finaux</h1>
         </div>
 
-        {/* Personal best banner — discreet, educational */}
+        {/* Personal best banner — with victory mascot */}
         {isPersonalBest && me && (
-          <section className="p-5 bg-gradient-to-r from-success/10 via-warning/10 to-primary/10 border-2 border-success/30 rounded-3xl text-center animate-fade-up">
-            <div className="inline-flex items-center gap-2 text-success font-display font-bold text-lg">
-              <Sparkles className="size-5" /> Nouveau record personnel !
+          <section className="p-5 bg-gradient-to-r from-success/10 via-warning/10 to-primary/10 border-2 border-success/30 rounded-3xl text-center animate-fade-up flex flex-col sm:flex-row items-center gap-4 justify-center">
+            <Mascot mood="victory" className="h-24 w-auto shrink-0" />
+            <div>
+              <div className="inline-flex items-center gap-2 text-success font-display font-bold text-lg">
+                <Sparkles className="size-5" /> Nouveau record personnel !
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {previousBest !== null && previousBest > 0
+                  ? <>Tu passes de <strong>{previousBest}</strong> à <strong>{me.score}</strong> pts sur ce quiz.</>
+                  : <>Premier record sur ce quiz : <strong>{me.score}</strong> pts.</>}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {previousBest !== null && previousBest > 0
-                ? <>Tu passes de <strong>{previousBest}</strong> à <strong>{me.score}</strong> pts sur ce quiz.</>
-                : <>Premier record sur ce quiz : <strong>{me.score}</strong> pts.</>}
-            </p>
           </section>
         )}
 
