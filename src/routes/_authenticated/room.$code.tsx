@@ -129,7 +129,10 @@ function RoomPage() {
   if (loading) {
     return (
       <FullScreenWrap>
-        <Loader2 className="size-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <Mascot mood="loading" className="h-32 w-auto animate-fade-up" />
+          <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
       </FullScreenWrap>
     );
   }
@@ -548,7 +551,14 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   );
 
   if (isLoading || !quiz || !question) {
-    return <FullScreenWrap><Loader2 className="size-8 animate-spin text-primary" /></FullScreenWrap>;
+    return (
+      <FullScreenWrap>
+        <div className="flex flex-col items-center gap-4">
+          <Mascot mood="focused" className="h-28 w-auto" />
+          <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
+      </FullScreenWrap>
+    );
   }
 
   const COLORS = ["bg-primary", "bg-warning", "bg-success", "bg-destructive"];
