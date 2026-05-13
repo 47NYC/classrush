@@ -1,13 +1,7 @@
 {
-  "functions": {
-    "app/server.ts": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/server"
-    }
+  "version": 2,
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
   ]
 }
