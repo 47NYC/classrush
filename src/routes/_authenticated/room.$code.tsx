@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
+import { Mascot } from "@/components/Mascot";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
