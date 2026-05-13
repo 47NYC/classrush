@@ -83,22 +83,35 @@ function FriendsPage() {
     if (c === myCode) { toast.error("C'est ton propre code !"); return; }
     setAdding(true);
     try {
-      const { data: target } = await supabase
+      const { data: target, error: targetErr } = await supabase
         .from("profiles").select("id, username").eq("friend_code", c).maybeSingle();
+      if (targetErr) throw targetErr;
       if (!target) { toast.error("Aucun joueur avec ce code"); return; }
-      // Check existing
-      const { data: existing } = await supabase
-        .from("friendships").select("id, status, requester_id, addressee_id")
-        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${target.id}),and(requester_id.eq.${target.id},addressee_id.eq.${user.id})`)
-        .maybeSingle();
-      if (existing) { toast.error("Demande déjà existante"); return; }
+      // Vérifie une éventuelle relation existante (les deux directions)
+      const { data: existing, error: exErr } = await supabase
+        .from("friendships")
+        .select("id, status, requester_id, addressee_id")
+        .or(`requester_id.eq.${user.id},requester_id.eq.${target.id}`)
+        .or(`addressee_id.eq.${user.id},addressee_id.eq.${target.id}`);
+      if (exErr) throw exErr;
+      const match = (existing ?? []).find(
+        (f) =>
+          (f.requester_id === user.id && f.addressee_id === target.id) ||
+          (f.requester_id === target.id && f.addressee_id === user.id)
+      );
+      if (match) {
+        toast.error(match.status === "accepted" ? "Vous êtes déjà amis" : "Demande déjà existante");
+        return;
+      }
       const { error } = await supabase
         .from("friendships")
         .insert({ requester_id: user.id, addressee_id: target.id, status: "pending" });
       if (error) throw error;
       toast.success(`Demande envoyée à ${target.username}`);
       setCode("");
+      queryClient.invalidateQueries({ queryKey: ["friendships", user.id] });
     } catch (err) {
+      console.error("Add friend error:", err);
       toast.error(err instanceof Error ? err.message : "Erreur");
     } finally {
       setAdding(false);

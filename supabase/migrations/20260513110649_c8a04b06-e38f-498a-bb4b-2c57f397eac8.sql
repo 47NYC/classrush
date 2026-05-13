@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_friend_code_unique ON public.profiles (friend_code);
