@@ -95,18 +95,33 @@ function JoinPage() {
         </div>
 
         <form id="join-form" onSubmit={handleJoin} className="p-6 bg-card border border-border/60 rounded-3xl shadow-soft space-y-4">
-          <input
-            type="text"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-            maxLength={6}
-            autoFocus
-            placeholder="ABC123"
-            className="w-full h-16 text-center font-mono font-bold text-3xl tracking-[0.5em] bg-background border-2 border-border rounded-2xl outline-none focus:border-primary transition-colors"
-          />
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-1.5">
+              <UserCircle2 className="size-3.5" /> Ton pseudo dans la partie
+            </span>
+            <input
+              type="text"
+              value={pseudo}
+              onChange={(e) => setPseudo(e.target.value.slice(0, 20))}
+              placeholder="Ton nom"
+              className="w-full h-12 px-4 bg-background border border-border rounded-xl outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold text-muted-foreground mb-1.5 block">Code de la partie</span>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+              maxLength={6}
+              autoFocus
+              placeholder="ABC123"
+              className="w-full h-16 text-center font-mono font-bold text-3xl tracking-[0.5em] bg-background border-2 border-border rounded-2xl outline-none focus:border-primary transition-colors"
+            />
+          </label>
           <button
             type="submit"
-            disabled={loading || code.length !== 6}
+            disabled={loading || code.length !== 6 || pseudo.trim().length < 2}
             className="w-full h-12 inline-flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-2xl font-semibold shadow-glow btn-press disabled:opacity-50"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : (
