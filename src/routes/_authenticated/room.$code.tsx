@@ -6,6 +6,7 @@ import confetti from "canvas-confetti";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
+import { Mascot } from "@/components/Mascot";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
@@ -129,7 +130,10 @@ function RoomPage() {
   if (loading) {
     return (
       <FullScreenWrap>
-        <Loader2 className="size-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <Mascot mood="loading" className="h-32 w-auto animate-fade-up" />
+          <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
       </FullScreenWrap>
     );
   }
@@ -548,7 +552,14 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   );
 
   if (isLoading || !quiz || !question) {
-    return <FullScreenWrap><Loader2 className="size-8 animate-spin text-primary" /></FullScreenWrap>;
+    return (
+      <FullScreenWrap>
+        <div className="flex flex-col items-center gap-4">
+          <Mascot mood="focused" className="h-28 w-auto" />
+          <Loader2 className="size-6 animate-spin text-primary" />
+        </div>
+      </FullScreenWrap>
+    );
   }
 
   const COLORS = ["bg-primary", "bg-warning", "bg-success", "bg-destructive"];
@@ -591,6 +602,18 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
                 className="mt-5 mx-auto rounded-2xl max-h-64 object-contain"
               />
             )}
+            {hasAnswered && (() => {
+              const picked = question.answers.find((a) => a.id === selectedAnswer);
+              const correct = !!picked?.is_correct;
+              return (
+                <div className="mt-5 flex items-center justify-center gap-3 animate-fade-up">
+                  <Mascot mood={correct ? "happy" : "surprised"} className="h-16 w-auto" />
+                  <span className={`font-display font-bold ${correct ? "text-success" : "text-destructive"}`}>
+                    {correct ? "Bien joué !" : "Aïe, raté !"}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
           {players.find((p) => p.user_id === userId)?.is_eliminated && (
             <div className="mb-4 p-4 bg-destructive/10 text-destructive rounded-2xl text-center font-display font-bold">
@@ -881,17 +904,20 @@ function Results({ room, players, profiles, isHost }: {
           <h1 className="mt-4 font-display text-4xl md:text-5xl font-bold">Résultats finaux</h1>
         </div>
 
-        {/* Personal best banner — discreet, educational */}
+        {/* Personal best banner — with victory mascot */}
         {isPersonalBest && me && (
-          <section className="p-5 bg-gradient-to-r from-success/10 via-warning/10 to-primary/10 border-2 border-success/30 rounded-3xl text-center animate-fade-up">
-            <div className="inline-flex items-center gap-2 text-success font-display font-bold text-lg">
-              <Sparkles className="size-5" /> Nouveau record personnel !
+          <section className="p-5 bg-gradient-to-r from-success/10 via-warning/10 to-primary/10 border-2 border-success/30 rounded-3xl text-center animate-fade-up flex flex-col sm:flex-row items-center gap-4 justify-center">
+            <Mascot mood="victory" className="h-24 w-auto shrink-0" />
+            <div>
+              <div className="inline-flex items-center gap-2 text-success font-display font-bold text-lg">
+                <Sparkles className="size-5" /> Nouveau record personnel !
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {previousBest !== null && previousBest > 0
+                  ? <>Tu passes de <strong>{previousBest}</strong> à <strong>{me.score}</strong> pts sur ce quiz.</>
+                  : <>Premier record sur ce quiz : <strong>{me.score}</strong> pts.</>}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              {previousBest !== null && previousBest > 0
-                ? <>Tu passes de <strong>{previousBest}</strong> à <strong>{me.score}</strong> pts sur ce quiz.</>
-                : <>Premier record sur ce quiz : <strong>{me.score}</strong> pts.</>}
-            </p>
           </section>
         )}
 
