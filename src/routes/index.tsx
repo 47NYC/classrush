@@ -66,17 +66,12 @@ function Hero() {
               <PlayCircle className="size-5" />
               Créer une partie
             </Link>
-            <div className="flex items-center bg-card p-1.5 rounded-2xl border-2 border-border focus-within:border-primary transition-all shadow-soft">
-              <input
-                type="text"
-                placeholder="CODE À 6 CHIFFRES"
-                maxLength={6}
-                className="bg-transparent px-4 py-2 font-mono font-bold text-base w-44 uppercase outline-none placeholder:text-muted-foreground/50 tracking-widest"
-              />
-              <button className="px-5 h-11 bg-foreground text-background rounded-xl font-semibold text-sm btn-press">
-                Rejoindre
-              </button>
-            </div>
+            <HeroJoinForm />
+          </div>
+          <div className="mt-3">
+            <Link to="/guest" className="text-sm text-muted-foreground hover:text-primary underline underline-offset-4">
+              Jouer en tant qu'invité (sans compte)
+            </Link>
           </div>
           <div className="mt-10 flex items-center gap-3 text-sm text-muted-foreground">
             <ShieldCheck className="size-4 text-success" />
