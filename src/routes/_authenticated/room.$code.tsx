@@ -458,45 +458,20 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     if (meRow?.is_eliminated) return;
     setHasAnswered(true);
     setSelectedAnswer(answer.id);
-    // Speed factor depends on mode
-    const speedRatio = timeLeft / timeLimit;
-    let speedFactor: number;
-    if (room.mode === "speedrun") {
-      // Stronger speed weighting (25%-100% bonus over base)
-      speedFactor = 0.25 + 1.5 * speedRatio;
-    } else if (room.mode === "survival") {
-      speedFactor = 0.5 + 0.5 * speedRatio;
-    } else {
-      speedFactor = 0.5 + 0.5 * speedRatio;
-    }
-    const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
-    setShowFeedback({ correct: answer.is_correct, points: earned });
-    // Subtle screen shake — soft for wrong, tiny for right (educational, not aggressive)
-    setShake(answer.is_correct ? "tiny" : "soft");
-    setTimeout(() => setShake("none"), 420);
-
-    // Insert player_answers + bump room_players.score
-    const { error: paErr } = await supabase.from("player_answers").insert({
-      room_id: room.id,
-      user_id: userId,
-      question_id: question.id,
-      answer_id: answer.id,
-      is_correct: answer.is_correct,
-      points_earned: earned,
+    const { data, error } = await callRpc<SubmitAnswerResult[]>("submit_answer", {
+      _room_id: room.id,
+      _question_id: question.id,
+      _answer_id: answer.id,
     });
-    if (paErr) {
+    const result = data?.[0];
+    if (error || !result) {
       toast.error("Réponse non enregistrée");
       return;
     }
-    if (earned > 0) {
-      const me = players.find((p) => p.user_id === userId);
-      const newScore = (me?.score ?? 0) + earned;
-      await supabase.from("room_players").update({ score: newScore }).eq("room_id", room.id).eq("user_id", userId);
-    }
-    // Survival mode: wrong answer eliminates the player
-    if (room.mode === "survival" && !answer.is_correct) {
-      await supabase.from("room_players").update({ is_eliminated: true }).eq("room_id", room.id).eq("user_id", userId);
-    }
+    setShowFeedback({ correct: result.is_correct, points: result.points_earned });
+    setShake(result.is_correct ? "tiny" : "soft");
+    setTimeout(() => setShake("none"), 420);
+    await loadPlayers(room.id);
   };
 
   // Live answer count for this question
@@ -599,7 +574,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
             )}
             {hasAnswered && (() => {
               const picked = question.answers.find((a) => a.id === selectedAnswer);
-              const correct = !!picked?.is_correct;
+              const correct = !!showFeedback?.correct;
               return (
                 <div className="mt-5 flex items-center justify-center gap-3 animate-fade-up">
                   <Mascot mood={correct ? "happy" : "surprised"} className="h-16 w-auto" />
@@ -619,8 +594,8 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
           <div className="grid sm:grid-cols-2 gap-3">
             {question.answers.map((a, i) => {
               const picked = selectedAnswer === a.id;
-              const showCorrect = hasAnswered && a.is_correct;
-              const showWrong = hasAnswered && picked && !a.is_correct;
+              const showCorrect = hasAnswered && picked && !!showFeedback?.correct;
+              const showWrong = hasAnswered && picked && showFeedback && !showFeedback.correct;
               return (
                 <button
                   key={a.id}
