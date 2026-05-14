@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import { Mascot } from "@/components/Mascot";
+import { callRpc, loadPublicProfiles } from "@/lib/supabase-rpc";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
@@ -45,9 +46,12 @@ type PlayerRow = {
 
 type ProfileLite = { id: string; username: string; display_name: string | null };
 
-type AnswerRow = { id: string; position: number; text: string; is_correct: boolean };
+type AnswerRow = { id: string; position: number; text: string };
 type QuestionRow = { id: string; position: number; text: string; image_url: string | null; time_limit: number; points: number; answers: AnswerRow[] };
 type QuizRow = { id: string; title: string; cover_url: string | null; questions: QuestionRow[] };
+type SubmitAnswerResult = { answer_id: string; is_correct: boolean; points_earned: number; total_score: number; is_eliminated: boolean };
+type PersonalBestResult = { is_personal_best: boolean; previous_best: number; current_score: number };
+type RewardClaimResult = { xp_gain: number; coin_gain: number; new_xp: number; new_level: number; new_coins: number; already_claimed: boolean };
 
 function RoomPage() {
   const { code } = Route.useParams();
@@ -119,11 +123,8 @@ function RoomPage() {
     setPlayers(data as PlayerRow[]);
     const ids = data.map((p) => p.user_id);
     if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, username, display_name")
-        .in("id", ids);
-      if (profs) setProfiles(new Map(profs.map((p) => [p.id, p as ProfileLite])));
+      const profs = await loadPublicProfiles(ids);
+      setProfiles(new Map([...profs].map(([id, p]) => [id, p as ProfileLite])));
     }
   };
 
@@ -326,9 +327,8 @@ function InviteFriendsModal({ roomId, roomCode, onClose }: { roomId: string; roo
         .eq("status", "accepted");
       const ids = (rows ?? []).map((f) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
       if (!ids.length) { setLoading(false); return; }
-      const { data: profs } = await supabase
-        .from("profiles").select("id, username, display_name").in("id", ids);
-      setFriends((profs ?? []).map((p) => ({ id: p.id, name: p.display_name || p.username })));
+      const profs = await loadPublicProfiles(ids);
+      setFriends([...profs.values()].map((p) => ({ id: p.id, name: p.display_name || p.username })));
       setLoading(false);
     })();
   }, [user]);
@@ -392,16 +392,12 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   const { data: quiz, isLoading } = useQuery({
     queryKey: ["room-quiz-full", room.quiz_id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quizzes")
-        .select("id, title, cover_url, questions(id, position, text, image_url, time_limit, points, answers(id, position, text, is_correct))")
-        .eq("id", room.quiz_id)
-        .single();
+      const { data, error } = await callRpc<QuizRow>("get_room_quiz", { _room_id: room.id });
       if (error) throw error;
       const sorted = [...((data?.questions ?? []) as QuestionRow[])]
         .sort((a, b) => a.position - b.position)
         .map((q) => ({ ...q, answers: [...q.answers].sort((a, b) => a.position - b.position) }));
-      return { ...data, questions: sorted } as QuizRow;
+      return { ...(data as QuizRow), questions: sorted } as QuizRow;
     },
   });
 
@@ -463,45 +459,19 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     if (meRow?.is_eliminated) return;
     setHasAnswered(true);
     setSelectedAnswer(answer.id);
-    // Speed factor depends on mode
-    const speedRatio = timeLeft / timeLimit;
-    let speedFactor: number;
-    if (room.mode === "speedrun") {
-      // Stronger speed weighting (25%-100% bonus over base)
-      speedFactor = 0.25 + 1.5 * speedRatio;
-    } else if (room.mode === "survival") {
-      speedFactor = 0.5 + 0.5 * speedRatio;
-    } else {
-      speedFactor = 0.5 + 0.5 * speedRatio;
-    }
-    const earned = answer.is_correct ? Math.round(question.points * speedFactor) : 0;
-    setShowFeedback({ correct: answer.is_correct, points: earned });
-    // Subtle screen shake — soft for wrong, tiny for right (educational, not aggressive)
-    setShake(answer.is_correct ? "tiny" : "soft");
-    setTimeout(() => setShake("none"), 420);
-
-    // Insert player_answers + bump room_players.score
-    const { error: paErr } = await supabase.from("player_answers").insert({
-      room_id: room.id,
-      user_id: userId,
-      question_id: question.id,
-      answer_id: answer.id,
-      is_correct: answer.is_correct,
-      points_earned: earned,
+    const { data, error } = await callRpc<SubmitAnswerResult[]>("submit_answer", {
+      _room_id: room.id,
+      _question_id: question.id,
+      _answer_id: answer.id,
     });
-    if (paErr) {
+    const result = data?.[0];
+    if (error || !result) {
       toast.error("Réponse non enregistrée");
       return;
     }
-    if (earned > 0) {
-      const me = players.find((p) => p.user_id === userId);
-      const newScore = (me?.score ?? 0) + earned;
-      await supabase.from("room_players").update({ score: newScore }).eq("room_id", room.id).eq("user_id", userId);
-    }
-    // Survival mode: wrong answer eliminates the player
-    if (room.mode === "survival" && !answer.is_correct) {
-      await supabase.from("room_players").update({ is_eliminated: true }).eq("room_id", room.id).eq("user_id", userId);
-    }
+    setShowFeedback({ correct: result.is_correct, points: result.points_earned });
+    setShake(result.is_correct ? "tiny" : "soft");
+    setTimeout(() => setShake("none"), 420);
   };
 
   // Live answer count for this question
@@ -604,7 +574,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
             )}
             {hasAnswered && (() => {
               const picked = question.answers.find((a) => a.id === selectedAnswer);
-              const correct = !!picked?.is_correct;
+              const correct = !!showFeedback?.correct;
               return (
                 <div className="mt-5 flex items-center justify-center gap-3 animate-fade-up">
                   <Mascot mood={correct ? "happy" : "surprised"} className="h-16 w-auto" />
@@ -624,8 +594,8 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
           <div className="grid sm:grid-cols-2 gap-3">
             {question.answers.map((a, i) => {
               const picked = selectedAnswer === a.id;
-              const showCorrect = hasAnswered && a.is_correct;
-              const showWrong = hasAnswered && picked && !a.is_correct;
+              const showCorrect = hasAnswered && picked && !!showFeedback?.correct;
+              const showWrong = hasAnswered && picked && showFeedback && !showFeedback.correct;
               return (
                 <button
                   key={a.id}
@@ -726,7 +696,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 function Results({ room, players, profiles, isHost }: {
   room: RoomRow; players: PlayerRow[]; profiles: Map<string, ProfileLite>; isHost: boolean;
 }) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const xpClaimedRef = useRef(false);
   const pbCheckedRef = useRef(false);
@@ -772,18 +742,12 @@ function Results({ room, players, profiles, isHost }: {
     pbCheckedRef.current = true;
 
     (async () => {
-      const { data: existing } = await supabase
-        .from("personal_bests")
-        .select("best_score")
-        .eq("user_id", user.id)
-        .eq("quiz_id", room.quiz_id)
-        .maybeSingle();
+      const { data, error } = await callRpc<PersonalBestResult[]>("record_personal_best", { _room_id: room.id });
+      if (error) return;
+      const result = data?.[0];
+      setPreviousBest(result?.previous_best ?? 0);
 
-      const prevBest = existing?.best_score ?? 0;
-      setPreviousBest(prevBest);
-      const isNewBest = me.score > prevBest;
-
-      if (isNewBest && me.score > 0) {
+      if (result?.is_personal_best) {
         setIsPersonalBest(true);
         // Confetti — soft educational tones, no aggressive colors
         const fire = (particleRatio: number, opts: confetti.Options) => {
@@ -801,37 +765,20 @@ function Results({ room, players, profiles, isHost }: {
         fire(0.2, { spread: 60 });
         fire(0.35, { spread: 100, decay: 0.91, scalar: 0.9 });
 
-        // Upsert new record
-        if (existing) {
-          await supabase.from("personal_bests")
-            .update({ best_score: me.score, best_mode: room.mode, achieved_at: new Date().toISOString() })
-            .eq("user_id", user.id).eq("quiz_id", room.quiz_id);
-        } else {
-          await supabase.from("personal_bests")
-            .insert({ user_id: user.id, quiz_id: room.quiz_id, best_score: me.score, best_mode: room.mode });
-        }
       }
     })();
-  }, [user, me, room.quiz_id, room.mode]);
+  }, [user, me, room.id]);
 
   // Claim XP once: 10 XP per point earned (capped)
   useEffect(() => {
-    if (!user || !profile || !me || xpClaimedRef.current) return;
+    if (!user || !me || xpClaimedRef.current) return;
     xpClaimedRef.current = true;
-    const xpGain = Math.min(2000, Math.round(me.score / 10));
-    const coinGain = Math.round(me.score / 50);
-    if (xpGain === 0 && coinGain === 0) return;
     (async () => {
-      const newXp = profile.xp + xpGain;
-      const newLevel = Math.max(profile.level, Math.floor(newXp / 1000) + 1);
-      await supabase.from("profiles").update({
-        xp: newXp,
-        coins: profile.coins + coinGain,
-        level: newLevel,
-      }).eq("id", user.id);
+      const { data, error } = await callRpc<RewardClaimResult[]>("claim_game_rewards", { _room_id: room.id });
+      if (error || data?.[0]?.already_claimed) return;
       refreshProfile();
     })();
-  }, [user, profile, me, refreshProfile]);
+  }, [user, me, room.id, refreshProfile]);
 
   /** Instant Replay — recreate a room with the same quiz + mode and join as host. */
   const handleReplay = async () => {

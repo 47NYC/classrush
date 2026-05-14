@@ -303,6 +303,33 @@ export type Database = {
         }
         Relationships: []
       }
+      reward_claims: {
+        Row: {
+          claimed_at: string
+          coin_gain: number
+          id: string
+          room_id: string
+          user_id: string
+          xp_gain: number
+        }
+        Insert: {
+          claimed_at?: string
+          coin_gain?: number
+          id?: string
+          room_id: string
+          user_id: string
+          xp_gain?: number
+        }
+        Update: {
+          claimed_at?: string
+          coin_gain?: number
+          id?: string
+          room_id?: string
+          user_id?: string
+          xp_gain?: number
+        }
+        Relationships: []
+      }
       room_invites: {
         Row: {
           created_at: string
@@ -527,13 +554,83 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_game_rewards: {
+        Args: { _room_id: string }
+        Returns: {
+          already_claimed: boolean
+          coin_gain: number
+          new_coins: number
+          new_level: number
+          new_xp: number
+          xp_gain: number
+        }[]
+      }
       generate_room_code: { Args: never; Returns: string }
+      get_global_leaderboard: {
+        Args: { _limit?: number }
+        Returns: {
+          display_name: string
+          id: string
+          level: number
+          rank_position: number
+          username: string
+        }[]
+      }
+      get_public_profiles: {
+        Args: { _ids: string[] }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+          level: number
+          username: string
+        }[]
+      }
+      get_room_quiz: { Args: { _room_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
+      }
+      is_room_member: {
+        Args: { _room_id: string; _user_id: string }
+        Returns: boolean
+      }
+      purchase_item: {
+        Args: { _item_id: string }
+        Returns: {
+          coins_remaining: number
+          message: string
+          ok: boolean
+        }[]
+      }
+      record_personal_best: {
+        Args: { _room_id: string }
+        Returns: {
+          current_score: number
+          is_personal_best: boolean
+          previous_best: number
+        }[]
+      }
+      send_friend_request_by_code: {
+        Args: { _code: string }
+        Returns: {
+          friendship_id: string
+          relationship_status: string
+          target_name: string
+        }[]
+      }
+      submit_answer: {
+        Args: { _answer_id: string; _question_id: string; _room_id: string }
+        Returns: {
+          answer_id: string
+          is_correct: boolean
+          is_eliminated: boolean
+          points_earned: number
+          total_score: number
+        }[]
       }
     }
     Enums: {

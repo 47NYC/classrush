@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageShell, PageHeader } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { callRpc, loadPublicProfiles } from "@/lib/supabase-rpc";
 import { Copy, UserPlus, Check, X, Loader2, Users, Send } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/friends")({
@@ -20,8 +21,10 @@ type Friendship = {
 };
 
 type ProfileLite = {
-  id: string; username: string; display_name: string | null; friend_code: string; level: number;
+  id: string; username: string; display_name: string | null; level: number;
 };
+
+type FriendRequestResult = { friendship_id: string; target_name: string; relationship_status: string };
 
 function FriendsPage() {
   const { user, profile } = useAuth();
@@ -46,11 +49,8 @@ function FriendsPage() {
       ids.delete(user!.id);
       let profiles: Record<string, ProfileLite> = {};
       if (ids.size) {
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, username, display_name, friend_code, level")
-          .in("id", [...ids]);
-        (profs ?? []).forEach((p) => { profiles[p.id] = p as ProfileLite; });
+        const profs = await loadPublicProfiles([...ids]);
+        profs.forEach((p) => { profiles[p.id] = p as ProfileLite; });
       }
       return { friendships, profiles };
     },
@@ -83,31 +83,15 @@ function FriendsPage() {
     if (c === myCode) { toast.error("C'est ton propre code !"); return; }
     setAdding(true);
     try {
-      const { data: target, error: targetErr } = await supabase
-        .from("profiles").select("id, username").eq("friend_code", c).maybeSingle();
-      if (targetErr) throw targetErr;
-      if (!target) { toast.error("Aucun joueur avec ce code"); return; }
-      // Vérifie une éventuelle relation existante (les deux directions)
-      const { data: existing, error: exErr } = await supabase
-        .from("friendships")
-        .select("id, status, requester_id, addressee_id")
-        .or(`requester_id.eq.${user.id},requester_id.eq.${target.id}`)
-        .or(`addressee_id.eq.${user.id},addressee_id.eq.${target.id}`);
-      if (exErr) throw exErr;
-      const match = (existing ?? []).find(
-        (f) =>
-          (f.requester_id === user.id && f.addressee_id === target.id) ||
-          (f.requester_id === target.id && f.addressee_id === user.id)
-      );
-      if (match) {
-        toast.error(match.status === "accepted" ? "Vous êtes déjà amis" : "Demande déjà existante");
+      const { data, error } = await callRpc<FriendRequestResult[]>("send_friend_request_by_code", { _code: c });
+      if (error) throw new Error(error.message);
+      const result = data?.[0];
+      if (!result) throw new Error("Aucun joueur avec ce code");
+      if (result.relationship_status !== "pending") {
+        toast.error(result.relationship_status === "accepted" ? "Vous êtes déjà amis" : "Demande déjà existante");
         return;
       }
-      const { error } = await supabase
-        .from("friendships")
-        .insert({ requester_id: user.id, addressee_id: target.id, status: "pending" });
-      if (error) throw error;
-      toast.success(`Demande envoyée à ${target.username}`);
+      toast.success(`Demande envoyée à ${result.target_name}`);
       setCode("");
       queryClient.invalidateQueries({ queryKey: ["friendships", user.id] });
     } catch (err) {

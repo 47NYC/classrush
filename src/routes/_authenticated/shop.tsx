@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageShell, PageHeader } from "@/components/PageShell";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { callRpc } from "@/lib/supabase-rpc";
 import { Loader2, Coins, Check, ShoppingBag, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/shop")({
@@ -18,6 +19,7 @@ type Item = {
   rarity: "common" | "rare" | "epic" | "legendary";
   price: number; preview_emoji: string | null; preview_color: string | null;
 };
+type PurchaseResult = { ok: boolean; message: string; coins_remaining: number };
 
 const RARITY_STYLE: Record<Item["rarity"], string> = {
   common: "border-muted-foreground/30 bg-muted/20",
@@ -75,13 +77,9 @@ function ShopPage() {
     if (profile.coins < item.price) { toast.error("Pas assez de pièces"); return; }
     setBusy(item.id);
     try {
-      const { error: invErr } = await supabase.from("user_inventory")
-        .insert({ user_id: user.id, item_id: item.id });
-      if (invErr) throw invErr;
-      const { error: payErr } = await supabase.from("profiles")
-        .update({ coins: profile.coins - item.price }).eq("id", user.id);
-      if (payErr) throw payErr;
-      toast.success(`${item.name} acheté !`);
+      const { data, error } = await callRpc<PurchaseResult[]>("purchase_item", { _item_id: item.id });
+      if (error) throw new Error(error.message);
+      toast.success(data?.[0]?.message === "Déjà possédé" ? "Déjà possédé" : `${item.name} acheté !`);
       refreshProfile();
       queryClient.invalidateQueries({ queryKey: ["my-inventory", user.id] });
     } catch (err) {

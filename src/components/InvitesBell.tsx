@@ -4,6 +4,7 @@ import { Bell, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { loadPublicProfiles } from "@/lib/supabase-rpc";
 
 type Invite = {
   id: string;
@@ -31,9 +32,8 @@ export function InvitesBell() {
     const list = (data ?? []) as Invite[];
     if (list.length) {
       const ids = [...new Set(list.map((i) => i.from_user))];
-      const { data: profs } = await supabase
-        .from("profiles").select("id, username, display_name").in("id", ids);
-      const map = new Map((profs ?? []).map((p) => [p.id, p.display_name || p.username]));
+      const profs = await loadPublicProfiles(ids);
+      const map = new Map([...profs].map(([id, p]) => [id, p.display_name || p.username]));
       list.forEach((i) => { i.from_name = map.get(i.from_user) || "Un ami"; });
     }
     setInvites(list);

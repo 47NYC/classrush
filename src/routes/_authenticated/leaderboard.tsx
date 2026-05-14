@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageShell, PageHeader } from "@/components/PageShell";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { callRpc } from "@/lib/supabase-rpc";
 import { Loader2, Trophy, Crown, Medal } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/leaderboard")({
@@ -10,18 +10,15 @@ export const Route = createFileRoute("/_authenticated/leaderboard")({
   component: LeaderboardPage,
 });
 
-type Row = { id: string; username: string; display_name: string | null; level: number; xp: number };
+type Row = { rank_position: number; id: string; username: string; display_name: string | null; level: number };
 
 function LeaderboardPage() {
   const { user } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["global-leaderboard"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, username, display_name, level, xp")
-        .order("xp", { ascending: false })
-        .limit(50);
+      const { data, error } = await callRpc<Row[]>("get_global_leaderboard", { _limit: 50 });
+      if (error) throw new Error(error.message);
       return (data ?? []) as Row[];
     },
   });
@@ -52,8 +49,8 @@ function LeaderboardPage() {
                     <div className="text-xs text-muted-foreground">Niveau {p.level}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-display font-bold tabular-nums">{p.xp.toLocaleString("fr-FR")}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">XP</div>
+                    <div className="font-display font-bold tabular-nums">#{p.rank_position}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">rang</div>
                   </div>
                 </div>
               );
@@ -65,7 +62,7 @@ function LeaderboardPage() {
         )}
         <div className="mt-4 text-center">
           <div className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-            <Trophy className="size-3.5 text-warning" /> Le classement est calculé sur ton XP cumulé.
+            <Trophy className="size-3.5 text-warning" /> Le classement affiche les pseudos et niveaux des meilleurs joueurs.
           </div>
         </div>
       </div>
