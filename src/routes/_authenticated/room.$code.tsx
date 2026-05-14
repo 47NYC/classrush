@@ -471,7 +471,6 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
     setShowFeedback({ correct: result.is_correct, points: result.points_earned });
     setShake(result.is_correct ? "tiny" : "soft");
     setTimeout(() => setShake("none"), 420);
-    await loadPlayers(room.id);
   };
 
   // Live answer count for this question
