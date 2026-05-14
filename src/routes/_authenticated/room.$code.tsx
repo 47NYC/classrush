@@ -391,16 +391,12 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
   const { data: quiz, isLoading } = useQuery({
     queryKey: ["room-quiz-full", room.quiz_id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("quizzes")
-        .select("id, title, cover_url, questions(id, position, text, image_url, time_limit, points, answers(id, position, text, is_correct))")
-        .eq("id", room.quiz_id)
-        .single();
+      const { data, error } = await callRpc<QuizRow>("get_room_quiz", { _room_id: room.id });
       if (error) throw error;
       const sorted = [...((data?.questions ?? []) as QuestionRow[])]
         .sort((a, b) => a.position - b.position)
         .map((q) => ({ ...q, answers: [...q.answers].sort((a, b) => a.position - b.position) }));
-      return { ...data, questions: sorted } as QuizRow;
+      return { ...(data as QuizRow), questions: sorted } as QuizRow;
     },
   });
 
