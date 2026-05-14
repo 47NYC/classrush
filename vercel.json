@@ -1,6 +1,7 @@
 {
-  "name": "votre-application-lovable",
-  "version": "0.0.0",
+  "name": "lovable-project",
+  "private": true,
+  "sideEffects": false,
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
