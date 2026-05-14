@@ -50,6 +50,8 @@ type AnswerRow = { id: string; position: number; text: string };
 type QuestionRow = { id: string; position: number; text: string; image_url: string | null; time_limit: number; points: number; answers: AnswerRow[] };
 type QuizRow = { id: string; title: string; cover_url: string | null; questions: QuestionRow[] };
 type SubmitAnswerResult = { answer_id: string; is_correct: boolean; points_earned: number; total_score: number; is_eliminated: boolean };
+type PersonalBestResult = { is_personal_best: boolean; previous_best: number; current_score: number };
+type RewardClaimResult = { xp_gain: number; coin_gain: number; new_xp: number; new_level: number; new_coins: number; already_claimed: boolean };
 
 function RoomPage() {
   const { code } = Route.useParams();
