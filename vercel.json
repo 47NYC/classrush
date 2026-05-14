@@ -1,19 +1,18 @@
 {
-  "name": "lovable-project",
-  "private": true,
-  "sideEffects": false,
+  "name": "votre-application-lovable",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
-    "start": "vinxi start",
+    "start": "vinxi start"
   },
   "dependencies": {
     "@tanstack/react-query": "5.83.1",
     "@tanstack/react-router": "1.168.26",
     "@tanstack/react-start": "1.167.51",
-    "@tanstack/router-plugin": "1.167.29",
-  },
+    "@tanstack/router-plugin": "1.167.29"
+  }
   "engines": {
     "node": ">=22.0.0"
   }
