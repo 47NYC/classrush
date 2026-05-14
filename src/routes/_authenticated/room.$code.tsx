@@ -697,7 +697,7 @@ function LiveGame({ room, players, profiles, isHost, userId }: {
 function Results({ room, players, profiles, isHost }: {
   room: RoomRow; players: PlayerRow[]; profiles: Map<string, ProfileLite>; isHost: boolean;
 }) {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const xpClaimedRef = useRef(false);
   const pbCheckedRef = useRef(false);
@@ -743,18 +743,12 @@ function Results({ room, players, profiles, isHost }: {
     pbCheckedRef.current = true;
 
     (async () => {
-      const { data: existing } = await supabase
-        .from("personal_bests")
-        .select("best_score")
-        .eq("user_id", user.id)
-        .eq("quiz_id", room.quiz_id)
-        .maybeSingle();
+      const { data, error } = await callRpc<PersonalBestResult[]>("record_personal_best", { _room_id: room.id });
+      if (error) return;
+      const result = data?.[0];
+      setPreviousBest(result?.previous_best ?? 0);
 
-      const prevBest = existing?.best_score ?? 0;
-      setPreviousBest(prevBest);
-      const isNewBest = me.score > prevBest;
-
-      if (isNewBest && me.score > 0) {
+      if (result?.is_personal_best) {
         setIsPersonalBest(true);
         // Confetti — soft educational tones, no aggressive colors
         const fire = (particleRatio: number, opts: confetti.Options) => {
@@ -772,37 +766,20 @@ function Results({ room, players, profiles, isHost }: {
         fire(0.2, { spread: 60 });
         fire(0.35, { spread: 100, decay: 0.91, scalar: 0.9 });
 
-        // Upsert new record
-        if (existing) {
-          await supabase.from("personal_bests")
-            .update({ best_score: me.score, best_mode: room.mode, achieved_at: new Date().toISOString() })
-            .eq("user_id", user.id).eq("quiz_id", room.quiz_id);
-        } else {
-          await supabase.from("personal_bests")
-            .insert({ user_id: user.id, quiz_id: room.quiz_id, best_score: me.score, best_mode: room.mode });
-        }
       }
     })();
-  }, [user, me, room.quiz_id, room.mode]);
+  }, [user, me, room.id]);
 
   // Claim XP once: 10 XP per point earned (capped)
   useEffect(() => {
-    if (!user || !profile || !me || xpClaimedRef.current) return;
+    if (!user || !me || xpClaimedRef.current) return;
     xpClaimedRef.current = true;
-    const xpGain = Math.min(2000, Math.round(me.score / 10));
-    const coinGain = Math.round(me.score / 50);
-    if (xpGain === 0 && coinGain === 0) return;
     (async () => {
-      const newXp = profile.xp + xpGain;
-      const newLevel = Math.max(profile.level, Math.floor(newXp / 1000) + 1);
-      await supabase.from("profiles").update({
-        xp: newXp,
-        coins: profile.coins + coinGain,
-        level: newLevel,
-      }).eq("id", user.id);
+      const { data, error } = await callRpc<RewardClaimResult[]>("claim_game_rewards", { _room_id: room.id });
+      if (error || data?.[0]?.already_claimed) return;
       refreshProfile();
     })();
-  }, [user, profile, me, refreshProfile]);
+  }, [user, me, room.id, refreshProfile]);
 
   /** Instant Replay — recreate a room with the same quiz + mode and join as host. */
   const handleReplay = async () => {
