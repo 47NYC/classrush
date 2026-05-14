@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
 import { Mascot } from "@/components/Mascot";
+import { callRpc, loadPublicProfiles } from "@/lib/supabase-rpc";
 import {
   Loader2, Copy, Users, PlayCircle, ArrowRight, Crown, Check,
   X as XIcon, Trophy, Home, RotateCcw, LogOut, Clock, Award, UserPlus, Send,
@@ -45,9 +46,10 @@ type PlayerRow = {
 
 type ProfileLite = { id: string; username: string; display_name: string | null };
 
-type AnswerRow = { id: string; position: number; text: string; is_correct: boolean };
+type AnswerRow = { id: string; position: number; text: string };
 type QuestionRow = { id: string; position: number; text: string; image_url: string | null; time_limit: number; points: number; answers: AnswerRow[] };
 type QuizRow = { id: string; title: string; cover_url: string | null; questions: QuestionRow[] };
+type SubmitAnswerResult = { answer_id: string; is_correct: boolean; points_earned: number; total_score: number; is_eliminated: boolean };
 
 function RoomPage() {
   const { code } = Route.useParams();
@@ -119,11 +121,8 @@ function RoomPage() {
     setPlayers(data as PlayerRow[]);
     const ids = data.map((p) => p.user_id);
     if (ids.length) {
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id, username, display_name")
-        .in("id", ids);
-      if (profs) setProfiles(new Map(profs.map((p) => [p.id, p as ProfileLite])));
+      const profs = await loadPublicProfiles(ids);
+      setProfiles(new Map([...profs].map(([id, p]) => [id, p as ProfileLite])));
     }
   };
 
