@@ -327,9 +327,8 @@ function InviteFriendsModal({ roomId, roomCode, onClose }: { roomId: string; roo
         .eq("status", "accepted");
       const ids = (rows ?? []).map((f) => f.requester_id === user.id ? f.addressee_id : f.requester_id);
       if (!ids.length) { setLoading(false); return; }
-      const { data: profs } = await supabase
-        .from("profiles").select("id, username, display_name").in("id", ids);
-      setFriends((profs ?? []).map((p) => ({ id: p.id, name: p.display_name || p.username })));
+      const profs = await loadPublicProfiles(ids);
+      setFriends([...profs.values()].map((p) => ({ id: p.id, name: p.display_name || p.username })));
       setLoading(false);
     })();
   }, [user]);
